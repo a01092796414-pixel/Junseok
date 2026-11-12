@@ -25,7 +25,7 @@ class Costs:
 class Trade:
     entry_date: date
     entry_price: float
-    shares: int
+    shares: float
     exit_date: date | None = None
     exit_price: float | None = None
     pnl: float = 0.0
@@ -75,7 +75,9 @@ class Result:
 
 
 def run_backtest(bars: list[Bar], strategy: Strategy, initial_cash: float = 10_000_000,
-                 costs: Costs | None = None, position_pct: float = 1.0) -> Result:
+                 costs: Costs | None = None, position_pct: float = 1.0,
+                 fractional: bool = False, min_order: float = 0.0) -> Result:
+    """fractional=True면 소수 단위 매수(코인), min_order는 최소 주문 금액(예: 업비트 5,000원)."""
     if len(bars) < 2:
         raise ValueError("백테스트에는 최소 2일치 데이터가 필요합니다")
     if not 0 < position_pct <= 1:
@@ -85,7 +87,7 @@ def run_backtest(bars: list[Bar], strategy: Strategy, initial_cash: float = 10_0
     if len(sig) != len(bars):
         raise ValueError("전략 신호 개수가 데이터 개수와 다릅니다")
 
-    cash, shares = float(initial_cash), 0
+    cash, shares = float(initial_cash), 0.0
     trades: list[Trade] = []
     open_trade: Trade | None = None
     entry_cost = 0.0
@@ -97,8 +99,10 @@ def run_backtest(bars: list[Bar], strategy: Strategy, initial_cash: float = 10_0
         if target == 1 and shares == 0:
             price = bar.open * (1 + costs.slippage)
             budget = cash * position_pct
-            n = int(budget // (price * (1 + costs.fee_rate)))
-            if n > 0:
+            n = budget / (price * (1 + costs.fee_rate))
+            if not fractional:
+                n = float(int(n))
+            if n > 0 and n * price >= min_order:
                 cost = n * price * (1 + costs.fee_rate)
                 cash -= cost
                 shares = n
@@ -112,7 +116,7 @@ def run_backtest(bars: list[Bar], strategy: Strategy, initial_cash: float = 10_0
             open_trade.exit_date, open_trade.exit_price = bar.date, price
             open_trade.pnl = proceeds - entry_cost
             trades.append(open_trade)
-            open_trade, shares = None, 0
+            open_trade, shares = None, 0.0
         if shares > 0:
             held_days += 1
         curve.append((bar.date, cash + shares * bar.close))

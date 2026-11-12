@@ -92,3 +92,22 @@ class TestRisk(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestSmallAccount(unittest.TestCase):
+    def test_fractional_and_min_order(self):
+        bars = flat_bars([100_000_000, 100_000_000, 110_000_000])
+        r = run_backtest(bars, BuyAndHold(), initial_cash=50_000, costs=NO_COST, fractional=True, min_order=5_000)
+        self.assertAlmostEqual(r.final_equity, 55_000)
+        r2 = run_backtest(bars, BuyAndHold(), initial_cash=4_000, costs=NO_COST, fractional=True, min_order=5_000)
+        self.assertEqual(r2.trades, [])
+        r3 = run_backtest(bars, BuyAndHold(), initial_cash=50_000, costs=NO_COST)
+        self.assertEqual(r3.trades, [])  # 1주가 5만 원보다 비싸면 못 산다
+
+    def test_simulation_runs(self):
+        from trading.simulate import run_simulation
+        _, sums = run_simulation("etf", runs=20)
+        self.assertEqual(len(sums), 3)
+        for s in sums:
+            self.assertLessEqual(s.p05_final, s.median_final)
+            self.assertLessEqual(s.median_final, s.p95_final)

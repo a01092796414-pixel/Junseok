@@ -55,3 +55,13 @@ class RiskManager:
                 return OrderCheck(False, f"종목 비중 한도({c.max_position_pct:.0%}) 초과")
         self.orders_today += 1
         return OrderCheck(True)
+
+
+def small_account_config(cash: float = 50_000) -> RiskConfig:
+    """소액(예: 5만 원) 실험용 안전장치."""
+    return RiskConfig(
+        max_order_amount=cash,
+        max_daily_loss=cash * 0.1,
+        max_position_pct=1.0,
+        max_orders_per_day=4,
+    )

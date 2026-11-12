@@ -45,7 +45,30 @@ def main(argv=None) -> int:
     b.add_argument("--out", help="리포트를 저장할 마크다운 파일 경로")
     b.add_argument("--synthetic", action="store_true", help="합성 데이터임을 리포트에 표시")
 
+    m = sub.add_parser("simulate", help="소액 모의투자 몬테카를로 시뮬레이션 (합성 가격)")
+    m.add_argument("--market", choices=["etf", "coin", "all"], default="all")
+    m.add_argument("--cash", type=float, default=50_000)
+    m.add_argument("--runs", type=int, default=500)
+    m.add_argument("--years", type=float, default=1.0)
+    m.add_argument("--seed", type=int, default=7)
+    m.add_argument("--out", help="리포트를 저장할 마크다운 파일 경로")
+
     args = p.parse_args(argv)
+
+    if args.cmd == "simulate":
+        from .simulate import format_simulation, run_simulation
+        parts = [f"# 모의투자 시뮬레이션: {args.cash:,.0f}원\n",
+                 "> ⚠️ 실제 시세가 아닌 합성 가격 흐름으로 돌린 결과입니다. 미래 수익 예측이 아니라, "
+                 "가정 아래에서 결과가 어느 범위로 흩어지는지 보여줍니다.\n"]
+        for key in (["etf", "coin"] if args.market == "all" else [args.market]):
+            prof, sums = run_simulation(key, args.runs, args.years, args.cash, args.seed)
+            parts.append(format_simulation(prof, sums, args.cash, args.years))
+        report = "\n".join(parts)
+        print(report)
+        if args.out:
+            with open(args.out, "w", encoding="utf-8") as f:
+                f.write(report)
+        return 0
 
     if args.cmd == "sample":
         save_csv(synthetic_bars(args.days, seed=args.seed), args.out)
