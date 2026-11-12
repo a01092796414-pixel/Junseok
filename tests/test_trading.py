@@ -122,28 +122,88 @@ class TestRolling(unittest.TestCase):
 
 
 class TestPaper(unittest.TestCase):
-    def _acc(self):
-        return {"id": "t", "name": "t", "market": "KRW-BTC", "cash": 50_000, "strategy": {"type": "hold"}}
+    def _acc(self, strat=None):
+        return {"id": "t", "name": "t", "market": "KRW-BTC", "cash": 50_000, "strategy": strat or {"type": "hold"}}
+
+    def _st(self, cash=50_000):
+        return {"id": "t", "initial_cash": cash, "cash": cash, "qty": 0.0, "created": "x",
+                "last_decision_date": None, "halted": False, "trades": [], "equity": []}
 
     def test_buy_then_sell_with_costs(self):
         from trading import paper
-        acc = self._acc()
-        st = {"id": "t", "initial_cash": 50_000, "cash": 50_000, "qty": 0.0, "created": "x",
-              "last_decision_date": None, "trades": [], "equity": []}
-        bars = flat_bars([100.0] * 5)
-        d = paper.decide(acc, st, bars, 100_000_000, "2026-01-01")
+        st = self._st()
+        d = paper.decide(self._acc(), st, flat_bars([100.0] * 5), 100_000_000, "2026-01-01", 99_000_000)
         self.assertEqual(d.action, "buy")
-        self.assertLess(d.equity, 50_000)          # 수수료·슬리피지만큼 손해
+        self.assertLess(d.equity, 50_000)
         self.assertGreater(d.equity, 49_900)
-        acc["strategy"] = {"type": "ma", "short": 2, "long": 3}
+        self.assertAlmostEqual(st["trades"][0]["gap_vs_open"], 100 / 99 - 1, places=4)
         down = flat_bars([100.0, 100.0, 100.0, 90.0, 80.0])
-        d2 = paper.decide(acc, st, down, 100_000_000, "2026-01-02")
+        d2 = paper.decide(self._acc({"type": "ma", "short": 2, "long": 3}), st, down, 100_000_000, "2026-01-02")
         self.assertEqual(d2.action, "sell")
         self.assertEqual(st["qty"], 0.0)
 
     def test_risk_blocks_tiny_account(self):
         from trading import paper
-        st = {"id": "t", "initial_cash": 4_000, "cash": 4_000, "qty": 0.0, "created": "x",
-              "last_decision_date": None, "trades": [], "equity": []}
-        d = paper.decide(self._acc(), st, flat_bars([1.0] * 3), 100_000_000, "2026-01-01")
+        d = paper.decide(self._acc(), self._st(4_000), flat_bars([1.0] * 3), 100_000_000, "2026-01-01")
         self.assertEqual(d.action, "blocked")
+
+    def test_grown_account_still_buys_up_to_cap(self):
+        from trading import paper
+        st = self._st()
+        st["cash"] = 80_000  # 수익이 나서 시작 금액보다 커진 계좌
+        d = paper.decide(self._acc(), st, flat_bars([1.0] * 3), 1_000_000, "2026-01-01")
+        self.assertEqual(d.action, "buy")
+        self.assertAlmostEqual(st["trades"][0]["amount"], 60_000, places=0)  # 한도 6만 원
+        self.assertGreater(st["cash"], 19_000)  # 넘는 돈은 현금
+
+    def test_stop_file_blocks_orders(self):
+        from trading import paper
+        d = paper.decide(self._acc(), self._st(), flat_bars([1.0] * 3), 1_000_000, "2026-01-01", stop=True)
+        self.assertEqual(d.action, "blocked")
+
+    def test_halt_at_minus_40(self):
+        from trading import paper
+        st = self._st()
+        st["cash"], st["qty"] = 0.0, 0.0005  # 1억일 때 5만 원어치
+        d = paper.decide(self._acc(), st, flat_bars([1.0] * 3), 59_000_000, "2026-01-01")
+        self.assertEqual(d.action, "halted")
+        self.assertTrue(st["halted"])
+
+    def test_validate_rejects_bad_data(self):
+        from datetime import datetime, timezone
+        from trading import paper
+        now = datetime(2026, 1, 6, 0, 30, tzinfo=timezone.utc)  # KST 09:30
+        good = flat_bars([1.0] * 5)  # 2024-01-01..05 → 기대 마지막 날짜와 다름
+        with self.assertRaises(paper.DataError):
+            paper.validate(good, 1, 1, now)
+        d = date(2026, 1, 1)
+        ok = [Bar(d + timedelta(days=i), 1, 1, 1, 1) for i in range(5)]  # 마지막 01-05
+        paper.validate(ok, 1, 1, now)
+        with self.assertRaises(paper.DataError):
+            paper.validate(ok[:2] + ok[3:], 1, 1, now)  # 날짜 누락
+        with self.assertRaises(paper.DataError):
+            paper.validate(ok, 0, 1, now)
+
+
+class TestUpbitCutoff(unittest.TestCase):
+    def test_drops_in_progress_candle_before_9am_kst(self):
+        from datetime import datetime, timezone
+        from trading.upbit import drop_incomplete
+        d = date(2026, 11, 10)
+        bars = [Bar(d + timedelta(days=i), 1, 1, 1, 1) for i in range(4)]  # 11-10 ~ 11-13
+        # KST 2026-11-13 08:59 = UTC 11-12 23:59 → 11-12 봉은 아직 진행 중
+        early = drop_incomplete(bars, datetime(2026, 11, 12, 23, 59, tzinfo=timezone.utc))
+        self.assertEqual(early[-1].date, date(2026, 11, 11))
+        # KST 09:05 = UTC 11-13 00:05 → 11-12 봉 완성
+        late = drop_incomplete(bars, datetime(2026, 11, 13, 0, 5, tzinfo=timezone.utc))
+        self.assertEqual(late[-1].date, date(2026, 11, 12))
+
+
+class TestSmallAccountConfig(unittest.TestCase):
+    def test_values(self):
+        from trading.risk import small_account_config
+        c = small_account_config(50_000)
+        self.assertEqual(c.max_order_amount, 60_000)
+        self.assertEqual(c.max_daily_loss, 5_000)
+        self.assertEqual(c.max_orders_per_day, 1)
+        self.assertFalse(c.live_trading)

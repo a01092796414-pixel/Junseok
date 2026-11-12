@@ -57,11 +57,15 @@ class RiskManager:
         return OrderCheck(True)
 
 
-def small_account_config(cash: float = 50_000) -> RiskConfig:
-    """소액(예: 5만 원) 실험용 안전장치."""
+def small_account_config(cash: float = 50_000, order_cap_ratio: float = 1.2) -> RiskConfig:
+    """소액(예: 5만 원) 실험용 안전장치.
+
+    1회 주문 한도는 시작 금액의 120%(5만 원이면 6만 원). 계좌가 불어나도 전략이 멈추지 않도록,
+    실행기는 주문액을 min(현금, 한도)로 줄이고 넘는 돈은 현금으로 둔다.
+    """
     return RiskConfig(
-        max_order_amount=cash,
+        max_order_amount=cash * order_cap_ratio,
         max_daily_loss=cash * 0.1,
         max_position_pct=1.0,
-        max_orders_per_day=4,
+        max_orders_per_day=1,
     )

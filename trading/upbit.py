@@ -31,8 +31,20 @@ def _get(params: dict) -> list[dict]:
     return []
 
 
+def drop_incomplete(bars: list[Bar], now_utc: datetime | None = None) -> list[Bar]:
+    """아직 끝나지 않은 봉을 뺀다.
+
+    업비트 일봉 D(KST 날짜)는 D일 09:00 ~ D+1일 09:00 KST, 즉 UTC로 D일 00:00 ~ D+1일 00:00이다.
+    그래서 완성된 봉은 날짜가 '지금 UTC 날짜'보다 앞선 봉뿐이다.
+    (KST 00:00~09:00 사이에 KST 날짜로 자르면 진행 중인 전날 봉이 섞이는 버그가 있었다.)
+    """
+    now_utc = now_utc or datetime.now(timezone.utc)
+    cutoff = now_utc.astimezone(timezone.utc).date()
+    return [b for b in bars if b.date < cutoff]
+
+
 def fetch_daily(market: str = "KRW-BTC", days: int = 1825, include_today: bool = False) -> list[Bar]:
-    """최근 days일 일봉. 기본으로 아직 끝나지 않은 오늘 봉(한국시간 09:00 기준)은 뺀다."""
+    """최근 days일 일봉. 기본으로 아직 끝나지 않은 봉은 뺀다 (drop_incomplete 참고)."""
     out: dict[date, Bar] = {}
     to = None
     while len(out) < days + 1:
@@ -53,8 +65,7 @@ def fetch_daily(market: str = "KRW-BTC", days: int = 1825, include_today: bool =
         time.sleep(0.2)  # 공개 API 요청 제한 지키기
     bars = sorted(out.values(), key=lambda b: b.date)
     if not include_today:
-        today_kst = (datetime.now(timezone.utc) + timedelta(hours=9)).date()
-        bars = [b for b in bars if b.date < today_kst]
+        bars = drop_incomplete(bars)
     return bars[-days:]
 
 

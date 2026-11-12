@@ -290,9 +290,10 @@ footer{font-size:12px;color:var(--faint)}
     var box=$("accts");box.textContent="";
     if(!list.length){var e=mk("div","empty");e.appendChild(mk("b",null,"아직 모의투자 계좌가 없습니다"));
       e.appendChild(document.createTextNode("리스크 매니저가 승인하면 5만 원짜리 가짜 계좌가 여기에 나타납니다."));box.appendChild(e);$("acctMeta").textContent="";return}
+    list.sort(function(x,y){return (x.control?1:0)-(y.control?1:0)});
     list.forEach(function(a){
-      var c=mk("article","acct");
-      var r1=mk("div","r1");var t=mk("div");t.appendChild(mk("h3",null,a.name||a.id));t.appendChild(mk("div","mk",(a.market||"")+" · "+(a.strategy||"")));
+      var c=mk("article","acct");if(a.control)c.style.opacity="0.85";
+      var r1=mk("div","r1");var t=mk("div");var h=mk("h3",null,a.name||a.id);if(a.control){var ct=mk("span","tag","대조군");ct.style.marginLeft="6px";h.appendChild(ct)}t.appendChild(h);t.appendChild(mk("div","mk",(a.market||"")+" · "+(a.strategy||"")));
       r1.appendChild(t);var pill=mk("span","pill",a.position||"");pill.dataset.s=a.position==="보유"?"working":"idle";r1.appendChild(pill);c.appendChild(r1);
       var eq=mk("div","eq",won(a.equity));c.appendChild(eq);
       var rp=typeof a.returnPct==="number"?a.returnPct:0;
@@ -302,6 +303,7 @@ footer{font-size:12px;color:var(--faint)}
       m.appendChild(mk("span",null,"마지막 판단: "+(a.lastDate||"–")+" "+(ACT[a.lastAction]||"")));
       m.appendChild(mk("span",null,"거래 "+(a.trades||0)+"회"));
       m.appendChild(mk("span",null,"시작일 "+(a.since||"–")));
+      if(a.lastNote)m.appendChild(mk("span",null,a.lastNote));
       c.appendChild(m);box.appendChild(c);
     });
     $("acctMeta").textContent=list.length+"개 계좌";
