@@ -111,3 +111,11 @@ class TestSmallAccount(unittest.TestCase):
         for s in sums:
             self.assertLessEqual(s.p05_final, s.median_final)
             self.assertLessEqual(s.median_final, s.p95_final)
+
+
+class TestRolling(unittest.TestCase):
+    def test_rolling_windows(self):
+        from trading.simulate import rolling_windows
+        sums = rolling_windows(synthetic_bars(600), window=200, step=20)
+        self.assertEqual(len(sums), 3)
+        self.assertGreater(sums[0].runs, 5)

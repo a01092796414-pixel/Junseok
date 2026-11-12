@@ -44,6 +44,8 @@ def main(argv=None) -> int:
     b.add_argument("--split", action="store_true", help="기간을 앞/뒤 절반으로 나눠서도 결과 보기")
     b.add_argument("--out", help="리포트를 저장할 마크다운 파일 경로")
     b.add_argument("--synthetic", action="store_true", help="합성 데이터임을 리포트에 표시")
+    b.add_argument("--fractional", action="store_true", help="소수점 매수 허용 (코인)")
+    b.add_argument("--min-order", type=float, default=0.0, help="최소 주문 금액 (업비트 5000)")
 
     m = sub.add_parser("simulate", help="소액 모의투자 몬테카를로 시뮬레이션 (합성 가격)")
     m.add_argument("--market", choices=["etf", "coin", "all"], default="all")
@@ -77,7 +79,8 @@ def main(argv=None) -> int:
 
     bars = load_csv(args.csv)
     strat = build_strategy(args)
-    kw = dict(initial_cash=args.cash, costs=Costs(args.fee, args.tax, args.slippage))
+    kw = dict(initial_cash=args.cash, costs=Costs(args.fee, args.tax, args.slippage),
+              fractional=args.fractional, min_order=args.min_order)
     note = "⚠️ 합성(가짜) 데이터 — 실제 성과 아님" if args.synthetic else ""
     parts = [format_report(compare(bars, strat, **kw), title=f"백테스트: {strat.describe()}", note=note)]
     if args.split:

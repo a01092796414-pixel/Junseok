@@ -13,3 +13,12 @@ date,open,high,low,close,volume
 
 실제 데이터 구하는 법: 증권사 앱이나 HTS에서 일별 시세를 내보내기(CSV)하거나,
 이 환경의 네트워크에서 데이터 사이트를 허용한 뒤 받아옵니다.
+
+## 업비트 코인 시세 (자동)
+
+```bash
+python -m trading.upbit --market KRW-BTC --days 1825   # data/upbit_KRW-BTC_daily.csv
+```
+
+업비트 공개 API(키 불필요)에서 한국시간 09:00 기준 일봉을 받습니다. 아직 끝나지 않은 오늘 봉은 뺍니다.
+이 작업 환경에서 `api.upbit.com`이 허용되어 있어야 합니다.

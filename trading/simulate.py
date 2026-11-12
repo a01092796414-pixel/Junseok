@@ -172,3 +172,55 @@ def format_simulation(profile: MarketProfile, summaries: list[Summary], cash: fl
             f"| {s.strategy} | {won(s.median_final)} | {won(s.p05_final)} | {won(s.p95_final)} | {s.loss_prob:.0%} | "
             f"{s.median_mdd:.1%} | {s.p05_mdd:.1%} | {s.avg_trades:.1f} | {won(s.avg_cost)} | {beat} |")
     return "\n".join(lines) + "\n"
+
+
+def rolling_windows(bars: list[Bar], cash: float = 50_000, window: int = 365, step: int = 7,
+                    costs: Costs | None = None, fractional: bool = False, min_order: float = 0.0,
+                    strategies: list[Strategy] | None = None) -> list[Summary]:
+    """실제 데이터에서 시작일을 step일씩 옮겨 가며 window일 동안 투자한 결과를 모은다.
+
+    "아무 날에나 5만 원으로 시작해 1년 뒤 보면 결과가 어땠나"를 실제 과거로 확인하는 방법.
+    구간끼리 겹치므로 서로 독립적인 시행은 아니다.
+    """
+    strategies = strategies or [MovingAverageCross(20, 60), Momentum(120), BuyAndHold()]
+    warm = max(getattr(s, "long", 0) or getattr(s, "lookback", 0) or 0 for s in strategies)
+    costs = costs or Costs()
+    starts = list(range(warm, len(bars) - window, step))
+    if not starts:
+        raise ValueError("데이터가 너무 짧습니다")
+    res = {s.describe(): {"f": [], "m": [], "t": []} for s in strategies}
+    for st in starts:
+        chunk = bars[st - warm: st + window + 1]
+        for s in strategies:
+            r = run_backtest(chunk, Warmup(s, warm), initial_cash=cash, costs=costs,
+                             fractional=fractional, min_order=min_order)
+            d = res[s.describe()]
+            d["f"].append(r.final_equity); d["m"].append(r.max_drawdown); d["t"].append(len(r.trades))
+    hold = res.get(BuyAndHold().describe())
+    out = []
+    for s in strategies:
+        d = res[s.describe()]
+        sm = Summary(strategy=s.describe(), runs=len(starts),
+                     median_final=statistics.median(d["f"]), p05_final=_pct(d["f"], 0.05),
+                     p95_final=_pct(d["f"], 0.95), loss_prob=sum(1 for x in d["f"] if x < cash) / len(starts),
+                     median_mdd=statistics.median(d["m"]), p05_mdd=_pct(d["m"], 0.05),
+                     avg_trades=statistics.mean(d["t"]), avg_cost=0.0)
+        if hold is not None and s.describe() != BuyAndHold().describe():
+            sm.beat_hold = sum(1 for a, b in zip(d["f"], hold["f"]) if a > b) / len(starts)
+        out.append(sm)
+    return out
+
+
+def format_rolling(title: str, summaries: list[Summary], cash: float, first: date, last: date, window: int) -> str:
+    def won(x):
+        return f"{x:,.0f}원"
+    lines = [f"## {title}", "",
+             f"- 실제 데이터 {first} ~ {last}, 시작일을 1주씩 옮기며 {window}일 투자 {summaries[0].runs}회 (구간이 겹침)",
+             f"- 시작 금액 {won(cash)}", "",
+             "| 전략 | 중간값 | 나쁜 경우 (하위 5%) | 좋은 경우 (상위 5%) | 손실 날 확률 | 최대낙폭 중간값 | 최대낙폭 나쁜 경우 | 평균 거래 수 | 보유보다 나은 비율 |",
+             "|---|---:|---:|---:|---:|---:|---:|---:|---:|"]
+    for s in summaries:
+        beat = "-" if s.beat_hold is None else f"{s.beat_hold:.0%}"
+        lines.append(f"| {s.strategy} | {won(s.median_final)} | {won(s.p05_final)} | {won(s.p95_final)} | {s.loss_prob:.0%} | "
+                     f"{s.median_mdd:.1%} | {s.p05_mdd:.1%} | {s.avg_trades:.1f} | {beat} |")
+    return "\n".join(lines) + "\n"
