@@ -54,3 +54,20 @@ AI 팀원은 규칙을 만들고, 검증하고, 감시하는 역할입니다.
 - 주가 데이터: 당분간은 증권사 앱 등에서 받은 CSV를 `data/` 폴더에 넣어 사용
 
 API 키는 절대 코드나 GitHub에 올리지 않습니다.
+
+## 실시간 상황판
+
+팀원 상태는 상황판에서 실시간으로 볼 수 있습니다: https://claude.ai/artifact/X3kJnKcA6ZeAGWbyB7XGSn
+
+팀장(메인 Claude)이 지키는 기록 규칙:
+
+1. 팀원에게 일을 맡기기 **직전**에 `agents/<팀원>` 상태를 `working`으로 바꾸고, `events`에 `start` 기록을 남깁니다.
+2. 일이 끝나면 `idle`(완료) 또는 `waiting`(다른 사람을 기다림)·`blocked`(막힘)로 바꾸고, `done`/`waiting`/`blocked` 기록을 남깁니다.
+3. 기록은 짧게 한 줄로, 무엇을 했는지와 결과만 적습니다.
+
+| 필드 | 값 |
+|---|---|
+| `agents/<id>` | `name`, `role`, `status`(working·waiting·blocked·idle), `task`, `detail`, `progress`(0~100, 선택), `updatedAt` |
+| `events/<id>` | `at`, `agent`, `kind`(start·done·waiting·blocked·note), `text` |
+
+팀원 id: `lead`, `researcher`, `strategist`, `backtester`, `risk-manager`, `trader`
