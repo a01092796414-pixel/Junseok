@@ -119,3 +119,31 @@ class TestRolling(unittest.TestCase):
         sums = rolling_windows(synthetic_bars(600), window=200, step=20)
         self.assertEqual(len(sums), 3)
         self.assertGreater(sums[0].runs, 5)
+
+
+class TestPaper(unittest.TestCase):
+    def _acc(self):
+        return {"id": "t", "name": "t", "market": "KRW-BTC", "cash": 50_000, "strategy": {"type": "hold"}}
+
+    def test_buy_then_sell_with_costs(self):
+        from trading import paper
+        acc = self._acc()
+        st = {"id": "t", "initial_cash": 50_000, "cash": 50_000, "qty": 0.0, "created": "x",
+              "last_decision_date": None, "trades": [], "equity": []}
+        bars = flat_bars([100.0] * 5)
+        d = paper.decide(acc, st, bars, 100_000_000, "2026-01-01")
+        self.assertEqual(d.action, "buy")
+        self.assertLess(d.equity, 50_000)          # 수수료·슬리피지만큼 손해
+        self.assertGreater(d.equity, 49_900)
+        acc["strategy"] = {"type": "ma", "short": 2, "long": 3}
+        down = flat_bars([100.0, 100.0, 100.0, 90.0, 80.0])
+        d2 = paper.decide(acc, st, down, 100_000_000, "2026-01-02")
+        self.assertEqual(d2.action, "sell")
+        self.assertEqual(st["qty"], 0.0)
+
+    def test_risk_blocks_tiny_account(self):
+        from trading import paper
+        st = {"id": "t", "initial_cash": 4_000, "cash": 4_000, "qty": 0.0, "created": "x",
+              "last_decision_date": None, "trades": [], "equity": []}
+        d = paper.decide(self._acc(), st, flat_bars([1.0] * 3), 100_000_000, "2026-01-01")
+        self.assertEqual(d.action, "blocked")

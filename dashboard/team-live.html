@@ -1,0 +1,354 @@
+<title>투자팀 상황판</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: control-room board — status summary bar, agent roster grid, pipeline strip, activity timeline */
+:root{
+  --bg:#f3f4f6; --surface:#ffffff; --sunk:#eceef2; --ink:#151a22; --muted:#626b78; --faint:#8b939f; --line:#e1e4ea;
+  --accent:#2c5fd4; --accent-soft:#e3eafb;
+  --work:#1e7f52; --work-soft:#dcf1e5; --wait:#a06a00; --wait-soft:#f8eccd; --block:#c0332b; --block-soft:#f9dfdd; --idle:#6b7380; --idle-soft:#eceef2;
+  --sans:"IBM Plex Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1318; --surface:#171c23; --sunk:#12161c; --ink:#e8ecf1; --muted:#9ba4b1; --faint:#6f7884; --line:#262d37;
+  --accent:#7aa2f7; --accent-soft:#1c2740;
+  --work:#4fcf8e; --work-soft:#14301f; --wait:#e3b54f; --wait-soft:#33290f; --block:#f2786f; --block-soft:#3a1a18; --idle:#8a929e; --idle-soft:#1d232b;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1318; --surface:#171c23; --sunk:#12161c; --ink:#e8ecf1; --muted:#9ba4b1; --faint:#6f7884; --line:#262d37;
+  --accent:#7aa2f7; --accent-soft:#1c2740;
+  --work:#4fcf8e; --work-soft:#14301f; --wait:#e3b54f; --wait-soft:#33290f; --block:#f2786f; --block-soft:#3a1a18; --idle:#8a929e; --idle-soft:#1d232b;
+  color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14.5px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1120px;margin:0 auto;padding-block:22px 48px;display:grid;gap:22px}
+h1,h2,h3{margin:0;line-height:1.3;text-wrap:balance}
+p{margin:0}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* top */
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 20px}
+.top h1{font-size:24px;font-weight:700;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:13.5px}
+.live{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:5px 12px}
+.live .ld{width:8px;height:8px;border-radius:50%;background:var(--faint)}
+.live[data-state="on"] .ld{background:var(--work);box-shadow:0 0 0 0 var(--work);animation:ping 2s infinite}
+.live[data-state="stale"] .ld{background:var(--wait)}
+.live[data-state="off"] .ld{background:var(--block)}
+
+/* summary */
+.summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.sum{background:var(--surface);padding:14px 16px;display:grid;gap:2px}
+.sum .n{font-family:var(--mono);font-size:26px;font-weight:500;line-height:1.1}
+.sum .l{font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.sum .l i{width:8px;height:8px;border-radius:50%}
+@media (max-width:560px){.summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* main grid */
+.main{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:22px;align-items:start}
+@media (max-width:900px){.main{grid-template-columns:minmax(0,1fr)}}
+.col{display:grid;gap:14px;min-width:0}
+.sechead{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.sechead h2{font-size:15px;font-weight:600}
+.sechead span{font-size:12px;color:var(--faint)}
+
+/* agents */
+.agents{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.agent{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px 16px;display:grid;gap:10px;align-content:start;position:relative;transition:border-color .3s}
+.agent[data-status="working"]{border-color:color-mix(in srgb,var(--work) 55%,var(--line))}
+.agent[data-status="blocked"]{border-color:color-mix(in srgb,var(--block) 45%,var(--line))}
+.ahead{display:flex;align-items:center;gap:10px}
+.av{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-weight:600;font-size:14px;background:var(--sunk);color:var(--ink);flex:none;position:relative}
+.av::after{content:"";position:absolute;right:-3px;bottom:-3px;width:11px;height:11px;border-radius:50%;border:2px solid var(--surface);background:var(--idle)}
+.agent[data-status="working"] .av::after{background:var(--work);animation:ping 1.6s infinite}
+.agent[data-status="waiting"] .av::after{background:var(--wait)}
+.agent[data-status="blocked"] .av::after{background:var(--block)}
+.who{min-width:0;flex:1}
+.who h3{font-size:15px;font-weight:600}
+.who .role{font-family:var(--mono);font-size:11px;color:var(--faint)}
+.pill{font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:999px;white-space:nowrap;background:var(--idle-soft);color:var(--idle)}
+.pill[data-s="working"]{background:var(--work-soft);color:var(--work)}
+.pill[data-s="waiting"]{background:var(--wait-soft);color:var(--wait)}
+.pill[data-s="blocked"]{background:var(--block-soft);color:var(--block)}
+.task{font-size:14px;font-weight:500;overflow-wrap:anywhere}
+.detail{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.bar{height:5px;border-radius:3px;background:var(--sunk);overflow:hidden}
+.bar b{display:block;height:100%;background:var(--work);border-radius:3px;transition:width .6s ease}
+.afoot{display:flex;justify-content:space-between;gap:8px;font-size:11.5px;color:var(--faint)}
+
+/* pipeline */
+.pipe{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;overflow-x:auto}
+.pnode{display:flex;align-items:center;gap:7px;font-size:13px;white-space:nowrap;padding:5px 10px;border-radius:8px;color:var(--muted)}
+.pnode i{width:7px;height:7px;border-radius:50%;background:var(--idle)}
+.pnode[data-s="working"]{background:var(--work-soft);color:var(--work);font-weight:600}
+.pnode[data-s="working"] i{background:var(--work)}
+.pnode[data-s="waiting"] i{background:var(--wait)}
+.pnode[data-s="blocked"] i{background:var(--block)}
+.parr{color:var(--faint);font-family:var(--mono);flex:none}
+
+/* timeline */
+.feed{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:6px 0;max-height:640px;overflow-y:auto}
+.ev{display:grid;grid-template-columns:52px minmax(0,1fr);gap:10px;padding:9px 16px;position:relative}
+.ev + .ev{border-top:1px solid var(--line)}
+.ev time{font-family:var(--mono);font-size:11.5px;color:var(--faint);padding-top:2px}
+.ev .who2{font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px}
+.ev .who2 i{width:7px;height:7px;border-radius:50%;background:var(--idle)}
+.ev[data-k="start"] .who2 i{background:var(--work)}
+.ev[data-k="done"] .who2 i{background:var(--accent)}
+.ev[data-k="blocked"] .who2 i{background:var(--block)}
+.ev[data-k="waiting"] .who2 i{background:var(--wait)}
+.ev p{font-size:13.5px;overflow-wrap:anywhere}
+.ev.new{animation:flash 1.6s ease-out}
+.day{padding:8px 16px 4px;font-size:11.5px;color:var(--faint);font-family:var(--mono)}
+
+
+/* paper accounts */
+.accts{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.acct{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:grid;gap:8px}
+.acct .r1{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.acct h3{font-size:15px;font-weight:600}
+.acct .mk{font-family:var(--mono);font-size:11px;color:var(--faint)}
+.acct .eq{font-family:var(--mono);font-size:24px;font-weight:500;line-height:1.1;font-variant-numeric:tabular-nums}
+.acct .ret{font-family:var(--mono);font-size:13px}
+.ret.up{color:var(--work)} .ret.down{color:var(--block)} .ret.flat{color:var(--muted)}
+.acct .meta{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12px;color:var(--muted)}
+.spark{width:100%;height:44px;display:block}
+.tag{font-size:11px;font-weight:600;padding:1px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+
+/* states */
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:22px;color:var(--muted);font-size:13.5px;display:grid;gap:6px}
+.empty b{color:var(--ink);font-weight:600}
+.skel{height:132px;border-radius:12px;background:linear-gradient(90deg,var(--surface),var(--sunk),var(--surface));background-size:200% 100%;animation:sh 1.4s infinite;border:1px solid var(--line)}
+.notice{font-size:12.5px;color:var(--wait);background:var(--wait-soft);border-radius:8px;padding:8px 12px}
+footer{font-size:12px;color:var(--faint)}
+
+@keyframes ping{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--work) 55%,transparent)}70%{box-shadow:0 0 0 7px transparent}100%{box-shadow:0 0 0 0 transparent}}
+@keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
+@keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+  <div class="top">
+    <div>
+      <h1>투자팀 상황판</h1>
+      <p class="sub">AI 팀원이 지금 무엇을 하고 있는지 실시간으로 보여줍니다.</p>
+    </div>
+    <span class="live" id="live" data-state="wait"><span class="ld"></span><span id="liveText">연결 중</span></span>
+  </div>
+
+  <div class="summary" aria-label="상태 요약">
+    <div class="sum"><span class="n" id="cWorking">–</span><span class="l"><i style="background:var(--work)"></i>작업 중</span></div>
+    <div class="sum"><span class="n" id="cWaiting">–</span><span class="l"><i style="background:var(--wait)"></i>대기</span></div>
+    <div class="sum"><span class="n" id="cBlocked">–</span><span class="l"><i style="background:var(--block)"></i>막힘</span></div>
+    <div class="sum"><span class="n" id="cIdle">–</span><span class="l"><i style="background:var(--idle)"></i>쉬는 중</span></div>
+  </div>
+
+  <div class="pipe" id="pipe" aria-label="작업 흐름"></div>
+
+
+  <section class="col" aria-labelledby="h-acct">
+    <div class="sechead"><h2 id="h-acct">모의투자 계좌 <span class="tag">가짜 돈</span></h2><span id="acctMeta"></span></div>
+    <div class="accts" id="accts"><div class="empty"><b>모의투자 계좌를 불러오는 중</b>리스크 매니저가 승인하면 5만 원짜리 가짜 계좌가 여기에 나타나고, 하루 한 번 잔고가 바뀝니다.</div></div>
+  </section>
+  <div class="main">
+    <div class="col">
+      <div class="sechead"><h2>팀원</h2><span id="agentsMeta"></span></div>
+      <div id="notice" hidden></div>
+      <div class="agents" id="agents">
+        <div class="skel"></div><div class="skel"></div><div class="skel"></div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="sechead"><h2>활동 기록</h2><span>최근 40개</span></div>
+      <div class="feed" id="feed"><div class="empty"><b>활동 기록을 불러오는 중</b>팀원이 일을 시작하거나 끝내면 여기에 한 줄씩 쌓입니다.</div></div>
+    </div>
+  </div>
+
+  <footer>상태는 팀장(Claude)이 팀원에게 일을 맡기고 끝낼 때마다 기록합니다. 대화가 멈춰 있으면 모두 쉬는 중으로 보입니다.</footer>
+</div>
+
+<script>
+(function(){
+  var ORDER=["lead","researcher","strategist","backtester","risk-manager","trader"];
+  var FALLBACK={lead:"팀장",researcher:"리서처",strategist:"전략가",backtester:"백테스터","risk-manager":"리스크 매니저",trader:"트레이더"};
+  var LABEL={working:"작업 중",waiting:"대기",blocked:"막힘",idle:"쉬는 중"};
+  var agents={},events=[],seen={},firstFeed=true;
+  var $=function(id){return document.getElementById(id)};
+
+  function ago(iso){
+    if(!iso)return "";
+    var s=(Date.now()-new Date(iso).getTime())/1000;
+    if(isNaN(s))return "";
+    if(s<60)return "방금";
+    if(s<3600)return Math.floor(s/60)+"분 전";
+    if(s<86400)return Math.floor(s/3600)+"시간 전";
+    return Math.floor(s/86400)+"일 전";
+  }
+  function hm(iso){var d=new Date(iso);if(isNaN(d))return "";return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")}
+  function ymd(iso){var d=new Date(iso);if(isNaN(d))return "";return d.getFullYear()+"."+String(d.getMonth()+1).padStart(2,"0")+"."+String(d.getDate()).padStart(2,"0")}
+  function st(a){var s=a&&a.status;return LABEL[s]?s:"idle"}
+  function nm(id){return (agents[id]&&agents[id].name)||FALLBACK[id]||id}
+  function mk(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e}
+
+  function ids(){
+    var list=ORDER.filter(function(i){return agents[i]});
+    Object.keys(agents).forEach(function(i){if(list.indexOf(i)<0)list.push(i)});
+    return list;
+  }
+
+  function renderAgents(){
+    var box=$("agents"),list=ids();
+    box.textContent="";
+    if(!list.length){
+      var e=mk("div","empty");e.appendChild(mk("b",null,"아직 등록된 팀원이 없습니다"));
+      e.appendChild(document.createTextNode("팀장이 첫 상태를 기록하면 팀원 카드가 나타납니다."));
+      box.appendChild(e);return;
+    }
+    var c={working:0,waiting:0,blocked:0,idle:0};
+    list.forEach(function(id){
+      var a=agents[id],s=st(a);c[s]++;
+      var card=mk("article","agent");card.dataset.status=s;
+      var head=mk("div","ahead");
+      var av=mk("div","av",(nm(id)||"?").slice(0,1));
+      var who=mk("div","who");who.appendChild(mk("h3",null,nm(id)));who.appendChild(mk("div","role",a.role||id));
+      var pill=mk("span","pill",LABEL[s]);pill.dataset.s=s;
+      head.appendChild(av);head.appendChild(who);head.appendChild(pill);card.appendChild(head);
+      card.appendChild(mk("div","task",a.task||(s==="idle"?"맡은 일 없음":"")));
+      if(a.detail)card.appendChild(mk("p","detail",a.detail));
+      if(typeof a.progress==="number"&&s==="working"){
+        var bar=mk("div","bar");var b=mk("b");b.style.width=Math.max(0,Math.min(100,a.progress))+"%";bar.appendChild(b);
+        bar.setAttribute("role","progressbar");bar.setAttribute("aria-valuenow",String(a.progress));bar.setAttribute("aria-label","진행률");
+        card.appendChild(bar);
+      }
+      var foot=mk("div","afoot");
+      foot.appendChild(mk("span",null,typeof a.progress==="number"&&s==="working"?a.progress+"%":""));
+      var t=mk("span","ago",ago(a.updatedAt));t.dataset.at=a.updatedAt||"";foot.appendChild(t);
+      card.appendChild(foot);
+      box.appendChild(card);
+    });
+    $("cWorking").textContent=c.working;$("cWaiting").textContent=c.waiting;$("cBlocked").textContent=c.blocked;$("cIdle").textContent=c.idle;
+    $("agentsMeta").textContent=list.length+"명";
+    renderPipe();
+  }
+
+  function renderPipe(){
+    var p=$("pipe");p.textContent="";
+    ["researcher","strategist","backtester","risk-manager","trader"].forEach(function(id,i){
+      if(i){var ar=mk("span","parr","→");ar.setAttribute("aria-hidden","true");p.appendChild(ar)}
+      var n=mk("span","pnode");n.dataset.s=st(agents[id]);n.appendChild(mk("i"));n.appendChild(document.createTextNode(nm(id)));p.appendChild(n);
+    });
+  }
+
+  function renderFeed(){
+    var f=$("feed");f.textContent="";
+    if(!events.length){
+      var e=mk("div","empty");e.appendChild(mk("b",null,"아직 활동 기록이 없습니다"));
+      e.appendChild(document.createTextNode("팀원이 일을 시작하거나 끝내면 여기에 한 줄씩 쌓입니다."));
+      f.appendChild(e);return;
+    }
+    var lastDay="";
+    events.forEach(function(ev){
+      var day=ymd(ev.at);
+      if(day&&day!==lastDay){f.appendChild(mk("div","day",day));lastDay=day}
+      var row=mk("div","ev");row.dataset.k=ev.kind||"note";
+      if(!firstFeed&&!seen[ev.id])row.classList.add("new");
+      seen[ev.id]=1;
+      var t=mk("time",null,hm(ev.at));t.setAttribute("datetime",ev.at||"");
+      var body=mk("div");var w=mk("div","who2");w.appendChild(mk("i"));w.appendChild(document.createTextNode(nm(ev.agent)));
+      body.appendChild(w);body.appendChild(mk("p",null,ev.text||""));
+      row.appendChild(t);row.appendChild(body);f.appendChild(row);
+    });
+    firstFeed=false;
+  }
+
+
+  var ACT={"buy":"매수","sell":"매도","hold-position":"보유 유지","stay-cash":"현금 유지","skipped":"건너뜀","blocked":"안전장치가 막음"};
+  function won(x){return typeof x==="number"?Math.round(x).toLocaleString("ko-KR")+"원":"–"}
+  function spark(hist,initial){
+    var NS="http://www.w3.org/2000/svg",svg=document.createElementNS(NS,"svg");
+    svg.setAttribute("class","spark");svg.setAttribute("viewBox","0 0 260 44");svg.setAttribute("preserveAspectRatio","none");
+    svg.setAttribute("role","img");svg.setAttribute("aria-label","평가액 추이");
+    var vals=(hist||[]).map(function(h){return h.value}).filter(function(v){return typeof v==="number"});
+    vals=[initial].concat(vals);
+    var lo=Math.min.apply(null,vals),hi=Math.max.apply(null,vals);if(hi-lo<1){hi+=1;lo-=1}
+    function y(v){return 4+36*(1-(v-lo)/(hi-lo))}
+    var base=document.createElementNS(NS,"line");base.setAttribute("x1",0);base.setAttribute("x2",260);base.setAttribute("y1",y(initial));base.setAttribute("y2",y(initial));
+    base.setAttribute("stroke","var(--line)");base.setAttribute("stroke-dasharray","3 3");svg.appendChild(base);
+    if(vals.length>1){
+      var d=vals.map(function(v,i){return (i?"L":"M")+(260*i/(vals.length-1)).toFixed(1)+" "+y(v).toFixed(1)}).join(" ");
+      var path=document.createElementNS(NS,"path");path.setAttribute("d",d);path.setAttribute("fill","none");
+      path.setAttribute("stroke",vals[vals.length-1]>=initial?"var(--work)":"var(--block)");path.setAttribute("stroke-width","2");
+      path.setAttribute("vector-effect","non-scaling-stroke");svg.appendChild(path);
+    }
+    return svg;
+  }
+  function renderAccts(list){
+    var box=$("accts");box.textContent="";
+    if(!list.length){var e=mk("div","empty");e.appendChild(mk("b",null,"아직 모의투자 계좌가 없습니다"));
+      e.appendChild(document.createTextNode("리스크 매니저가 승인하면 5만 원짜리 가짜 계좌가 여기에 나타납니다."));box.appendChild(e);$("acctMeta").textContent="";return}
+    list.forEach(function(a){
+      var c=mk("article","acct");
+      var r1=mk("div","r1");var t=mk("div");t.appendChild(mk("h3",null,a.name||a.id));t.appendChild(mk("div","mk",(a.market||"")+" · "+(a.strategy||"")));
+      r1.appendChild(t);var pill=mk("span","pill",a.position||"");pill.dataset.s=a.position==="보유"?"working":"idle";r1.appendChild(pill);c.appendChild(r1);
+      var eq=mk("div","eq",won(a.equity));c.appendChild(eq);
+      var rp=typeof a.returnPct==="number"?a.returnPct:0;
+      var ret=mk("div","ret "+(rp>0?"up":rp<0?"down":"flat"),(rp>0?"+":"")+rp.toFixed(2)+"%  (시작 "+won(a.initial)+")");c.appendChild(ret);
+      c.appendChild(spark(a.history,a.initial||50000));
+      var m=mk("div","meta");
+      m.appendChild(mk("span",null,"마지막 판단: "+(a.lastDate||"–")+" "+(ACT[a.lastAction]||"")));
+      m.appendChild(mk("span",null,"거래 "+(a.trades||0)+"회"));
+      m.appendChild(mk("span",null,"시작일 "+(a.since||"–")));
+      c.appendChild(m);box.appendChild(c);
+    });
+    $("acctMeta").textContent=list.length+"개 계좌";
+  }
+
+  function setLive(state,text){var l=$("live");l.dataset.state=state;$("liveText").textContent=text}
+  function notice(text){var n=$("notice");if(!text){n.hidden=true;return}n.className="notice";n.textContent=text;n.hidden=false}
+
+  setInterval(function(){
+    document.querySelectorAll(".ago").forEach(function(e){e.textContent=ago(e.dataset.at)});
+  },30000);
+
+  renderPipe();
+
+  (async function(){
+    var db=null;
+    try{db=window.claude&&window.claude.use?await window.claude.use("db"):null}catch(e){db=null}
+    if(!db){
+      setLive("off","실시간 연결 안 됨");
+      $("agents").textContent="";
+      var e=mk("div","empty");e.appendChild(mk("b",null,"이 화면에서는 실시간 상태를 볼 수 없습니다"));
+      e.appendChild(document.createTextNode("claude.ai에 로그인한 상태로 이 페이지를 열어 주세요."));
+      $("agents").appendChild(e);
+      $("feed").textContent="";
+      return;
+    }
+    var gotA=false,gotE=false;
+    var timer=setTimeout(function(){
+      if(!gotA||!gotE){setLive("stale","응답 지연");notice("상태 정보를 아직 받지 못했습니다. 보이는 내용이 오래됐을 수 있습니다.")}
+    },10000);
+    function settle(){if(gotA&&gotE){clearTimeout(timer);notice("");setLive("on","실시간")}}
+
+    db.collection("agents").onSnapshot(function(snap){
+      var next={};snap.docs.forEach(function(d){if(d.exists)next[d.id]=d.data()});
+      agents=next;renderAgents();renderFeed();
+      if(!snap.metadata.fromCache){gotA=true;settle()}
+    },function(err){clearTimeout(timer);setLive("off","연결 끊김");notice("팀원 상태를 불러오지 못했습니다. 페이지를 다시 열어 주세요.")});
+
+
+    db.collection("accounts").onSnapshot(function(snap){
+      renderAccts(snap.docs.filter(function(d){return d.exists}).map(function(d){var x=d.data();x.id=d.id;return x}));
+    },function(err){notice("모의투자 계좌를 불러오지 못했습니다. 페이지를 다시 열어 주세요.")});
+    db.collection("events").orderBy("at","desc").limit(40).onSnapshot(function(snap){
+      events=snap.docs.filter(function(d){return d.exists}).map(function(d){var x=d.data();return {id:d.id,at:x.at,agent:x.agent,text:x.text,kind:x.kind}});
+      renderFeed();
+      if(!snap.metadata.fromCache){gotE=true;settle()}
+    },function(err){clearTimeout(timer);setLive("off","연결 끊김");notice("활동 기록을 불러오지 못했습니다. 페이지를 다시 열어 주세요.")});
+  })();
+})();
+</script>
