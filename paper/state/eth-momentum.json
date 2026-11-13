@@ -1,10 +1,10 @@
 {
  "id": "eth-momentum",
  "initial_cash": 50000,
- "cash": 0.0,
- "qty": 0.01806262207176078,
+ "cash": 49128.803250982404,
+ "qty": 0.0,
  "created": "2026-11-12",
- "last_decision_date": "2026-11-12",
+ "last_decision_date": "2026-11-13",
  "halted": false,
  "trades": [
   {
@@ -16,16 +16,30 @@
    "fee": 24.99,
    "open": 2788000.0,
    "gap_vs_open": -0.00861
+  },
+  {
+   "date": "2026-11-13",
+   "side": "sell",
+   "price": 2721276.0,
+   "qty": 0.01806262207176078,
+   "amount": 49153.38,
+   "fee": 24.58,
+   "open": 2732000.0,
+   "gap_vs_open": -0.00293
   }
  ],
  "equity": [
   {
    "date": "2026-11-12",
    "value": 49925.09
+  },
+  {
+   "date": "2026-11-13",
+   "value": 49128.8
   }
  ],
- "last_signal": 1,
- "last_action": "buy",
- "last_price": 2764000.0,
+ "last_signal": 0,
+ "last_action": "sell",
+ "last_price": 2724000.0,
  "last_note": ""
 }
