@@ -1,10 +1,10 @@
 {
  "id": "btc-momentum",
  "initial_cash": 50000,
- "cash": 0.0,
- "qty": 0.0005032010019286074,
+ "cash": 46964.67476379442,
+ "qty": 0.0,
  "created": "2026-11-12",
- "last_decision_date": "2026-11-13",
+ "last_decision_date": "2026-11-14",
  "halted": false,
  "trades": [
   {
@@ -16,6 +16,16 @@
    "fee": 24.99,
    "open": 100338000.0,
    "gap_vs_open": -0.01119
+  },
+  {
+   "date": "2026-11-14",
+   "side": "sell",
+   "price": 93378528.0,
+   "qty": 0.0005032010019286074,
+   "amount": 46988.17,
+   "fee": 23.49,
+   "open": 93292000.0,
+   "gap_vs_open": 0.00193
   }
  ],
  "equity": [
@@ -26,10 +36,14 @@
   {
    "date": "2026-11-13",
    "value": 48472.85
+  },
+  {
+   "date": "2026-11-14",
+   "value": 46964.67
   }
  ],
- "last_signal": 1,
- "last_action": "hold-position",
- "last_price": 96329000.0,
+ "last_signal": 0,
+ "last_action": "sell",
+ "last_price": 93472000.0,
  "last_note": ""
 }
