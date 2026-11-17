@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>마주톡 Talk Bridge</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&display=swap">
+<style>
+/* Layout: one phone on the table, two halves. The top half faces the English speaker (rotated), the bottom half faces the Korean speaker. */
+:root {
+  --bg: #eef1f0;
+  --panel: #ffffff;
+  --ink: #17201e;
+  --muted: #5d6b67;
+  --line: #d5dcda;
+  --en: #0d6b61;        /* English side: deep teal */
+  --en-soft: #dcefeb;
+  --ko: #a2540f;        /* Korean side: ochre */
+  --ko-soft: #f6e7d6;
+  --live: #7a8784;
+  --danger: #b42318;
+  --font-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-display: "Bricolage Grotesque", "IBM Plex Sans KR", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101514; --panel: #18201e; --ink: #e8eeec; --muted: #9aa9a5; --line: #2b3633;
+    --en: #5cc6b8; --en-soft: #183a35; --ko: #f0a65c; --ko-soft: #3d2a17; --live: #8a9894; --danger: #f97066;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101514; --panel: #18201e; --ink: #e8eeec; --muted: #9aa9a5; --line: #2b3633;
+  --en: #5cc6b8; --en-soft: #183a35; --ko: #f0a65c; --ko-soft: #3d2a17; --live: #8a9894; --danger: #f97066;
+  color-scheme: dark;
+}
+
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+}
+* { box-sizing: border-box; }
+button, input { font: inherit; color: inherit; }
+
+.app {
+  height: 100%;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 760px; margin: 0 auto;
+  padding-left: max(12px, env(safe-area-inset-left, 0px));
+  padding-right: max(12px, env(safe-area-inset-right, 0px));
+  padding-block: 10px;
+  gap: 8px;
+}
+@media (min-width: 420px) {
+  .app { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+}
+
+.side {
+  --c: var(--en); --c-soft: var(--en-soft);
+  min-height: 0;
+  display: grid; grid-template-rows: auto minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  overflow: hidden;
+  transition: transform .35s ease;
+}
+.side[data-lang="ko"] { --c: var(--ko); --c-soft: var(--ko-soft); }
+.side.flip { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) { .side { transition: none; } }
+
+.side-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 10px 14px 6px;
+}
+.who { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.who b { font-family: var(--font-display); font-size: 18px; color: var(--c); letter-spacing: .01em; }
+.who span { color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.feed {
+  min-height: 0; overflow-y: auto;
+  padding: 4px 14px 8px;
+  display: flex; flex-direction: column; gap: 10px;
+  scroll-behavior: smooth;
+}
+.msg { display: flex; flex-direction: column; gap: 2px; max-width: 92%; }
+.msg.theirs { align-self: flex-start; }
+.msg.mine { align-self: flex-end; align-items: flex-end; }
+.bubble {
+  border: 0; text-align: left; cursor: pointer;
+  border-radius: 14px; padding: 8px 12px;
+  overflow-wrap: anywhere;
+}
+.bubble:lang(ko) { word-break: keep-all; overflow-wrap: break-word; }
+.theirs .bubble { background: var(--c-soft); font-size: 21px; line-height: 1.4; font-weight: 500; }
+.mine .bubble { background: transparent; border: 1px solid var(--line); font-size: 14.5px; color: var(--muted); cursor: default; }
+.theirs .bubble:focus-visible, .mic:focus-visible, .send:focus-visible, .tog:focus-visible { outline: 2px solid var(--c, var(--en)); outline-offset: 2px; }
+.meta { overflow-wrap: anywhere; font-size: 11.5px; color: var(--muted); padding-inline: 4px; display: flex; gap: 6px; align-items: center; }
+.chip { flex: none; white-space: nowrap; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; border: 1px solid var(--line); border-radius: 99px; padding: 0 6px; }
+.pending .bubble { opacity: .7; }
+.err .bubble { color: var(--danger); }
+
+.live {
+  font-size: 15px; color: var(--live); font-style: italic;
+  padding: 0 14px; min-height: 0;
+}
+.live:empty { display: none; }
+.live.hearing::before { content: "● "; color: var(--c); font-style: normal; }
+
+.composer {
+  display: flex; gap: 8px; align-items: center;
+  padding: 8px 10px 10px; border-top: 1px solid var(--line);
+}
+.composer input {
+  flex: 1; min-width: 0;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--bg);
+  padding: 10px 12px;
+}
+.composer input:focus { outline: 2px solid var(--c); outline-offset: -1px; }
+.send {
+  border: 1px solid var(--line); background: var(--panel); border-radius: 12px;
+  padding: 10px 12px; cursor: pointer; white-space: nowrap;
+}
+.mic {
+  flex: none; width: 52px; height: 52px; border-radius: 50%;
+  border: 0; background: var(--c); color: var(--panel); cursor: pointer;
+  display: grid; place-items: center;
+}
+.mic svg { width: 24px; height: 24px; }
+.mic.on { animation: pulse 1.4s ease-in-out infinite; }
+.mic:disabled { opacity: .35; cursor: not-allowed; }
+@keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--c) 45%, transparent); } 50% { box-shadow: 0 0 0 10px color-mix(in srgb, var(--c) 0%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .mic.on { animation: none; outline: 3px solid var(--c); outline-offset: 3px; } }
+
+.bar {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 8px;
+  font-size: 12.5px;
+}
+.brand { font-family: var(--font-display); font-size: 15px; margin-right: 4px; }
+.brand em { font-style: normal; color: var(--ko); }
+.brand i { font-style: normal; color: var(--en); }
+.tog {
+  border: 1px solid var(--line); background: var(--panel); border-radius: 99px;
+  padding: 5px 11px; cursor: pointer; color: var(--muted);
+}
+.tog[aria-pressed="true"] { color: var(--ink); border-color: var(--ink); }
+.status { color: var(--muted); font-size: 11.5px; width: 100%; text-align: center; }
+</style>
+
+<div class="app">
+  <section class="side flip" id="side-en" data-lang="en" aria-label="English speaker side">
+    <div class="side-head">
+      <div class="who"><b>English</b><span>Tap the mic and speak</span></div>
+    </div>
+    <div class="feed" id="feed-en" aria-live="polite"></div>
+    <div>
+      <div class="live" id="live-en"></div>
+      <form class="composer" id="form-en" autocomplete="off">
+        <input id="input-en" type="text" placeholder="Type in English" aria-label="Type in English" lang="en">
+        <button class="send" type="submit">Send</button>
+        <button class="mic" id="mic-en" type="button" aria-label="Speak English"></button>
+      </form>
+    </div>
+  </section>
+
+  <div class="bar" role="toolbar" aria-label="설정">
+    <span class="brand"><em>마주</em><i>Talk</i></span>
+    <button class="tog" id="tog-flip" type="button" aria-pressed="true">마주보기</button>
+    <button class="tog" id="tog-voice" type="button" aria-pressed="true">읽어주기</button>
+    <button class="tog" id="tog-clear" type="button">대화 지우기</button>
+    <div class="status" id="status">준비 중…</div>
+  </div>
+
+  <section class="side" id="side-ko" data-lang="ko" aria-label="한국어 사용자 쪽">
+    <div class="side-head">
+      <div class="who"><b>한국어</b><span>마이크를 누르고 말하세요</span></div>
+    </div>
+    <div class="feed" id="feed-ko" aria-live="polite"></div>
+    <div>
+      <div class="live" id="live-ko"></div>
+      <form class="composer" id="form-ko" autocomplete="off">
+        <input id="input-ko" type="text" placeholder="한국어로 입력" aria-label="한국어로 입력" lang="ko">
+        <button class="send" type="submit">보내기</button>
+        <button class="mic" id="mic-ko" type="button" aria-label="한국어로 말하기"></button>
+      </form>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const MIC_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
+  const STOP_SVG = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2"/></svg>';
+  const LANG = {
+    ko: { name: "Korean", tts: "ko-KR", rec: "ko-KR", dict: "ko", other: "en", me: "나", them: "상대", wait: "번역 중…", fail: "번역하지 못했어요. 다시 보내 주세요." },
+    en: { name: "English", tts: "en-US", rec: "en-US", dict: "en", other: "ko", me: "Me", them: "Friend", wait: "Translating…", fail: "Couldn't translate. Please send it again." },
+  };
+  const $ = (id) => document.getElementById(id);
+
+  // ---------- state ----------
+  let msgs = [
+    { id: 1, side: "ko", text: "안녕! 오늘 수업 어땠어?", tr: "Hi! How was class today?", example: true },
+    { id: 2, side: "en", text: "Pretty good, but the Korean grammar part was hard.", tr: "꽤 괜찮았는데, 한국어 문법 부분이 어려웠어.", example: true },
+  ];
+  let nextId = 3;
+  let speakAloud = true;
+
+  // ---------- engines (light up when the viewer grants them) ----------
+  let sampleFn = null;        // Claude translation
+  let dictation = null;       // platform dictation
+  const WebRec = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+  const use = (n) => (window.claude && typeof window.claude.use === "function") ? window.claude.use(n).catch(() => null) : Promise.resolve(null);
+
+  function updateStatus() {
+    const t = sampleFn ? "번역: Claude" : "번역: 무료 번역 엔진";
+    const m = dictation ? "음성 입력: 켜짐" : (WebRec ? "음성 입력: 브라우저" : "음성 입력 없음 · 글자로 입력하세요");
+    $("status").textContent = t + " · " + m;
+    for (const s of ["ko", "en"]) $("mic-" + s).disabled = !dictation && !WebRec;
+  }
+
+  // ---------- rendering ----------
+  function render() {
+    for (const lang of ["ko", "en"]) {
+      const feed = $("feed-" + lang);
+      feed.textContent = "";
+      for (const m of msgs) {
+        const mine = m.side === lang;
+        const row = document.createElement("div");
+        row.className = "msg " + (mine ? "mine" : "theirs") + (m.pending && !mine ? " pending" : "") + (m.error && !mine ? " err" : "");
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "bubble";
+        b.lang = lang;
+        b.textContent = mine ? m.text : (m.error ? LANG[lang].fail : (m.tr || LANG[lang].wait));
+        if (!mine && m.tr && !m.pending) {
+          b.title = lang === "ko" ? "눌러서 다시 듣기" : "Tap to hear again";
+          b.addEventListener("click", () => say(m.tr, lang));
+        } else {
+          b.tabIndex = -1;
+        }
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        if (!mine) {
+          const o = document.createElement("span");
+          o.lang = m.side;
+          o.textContent = m.text;
+          meta.append(o);
+        } else {
+          meta.append(LANG[lang].me);
+        }
+        if (m.example) {
+          const c = document.createElement("span");
+          c.className = "chip";
+          c.textContent = lang === "ko" ? "예시" : "example";
+          meta.append(c);
+        }
+        row.append(b, meta);
+        feed.append(row);
+      }
+      feed.scrollTop = feed.scrollHeight;
+    }
+  }
+
+  // ---------- translation ----------
+  const fromTo = (side) => [LANG[side].name, LANG[LANG[side].other].name];
+
+  function contextLines() {
+    return msgs.filter((m) => !m.example && !m.pending && !m.error).slice(-6)
+      .map((m) => (m.side === "ko" ? "Korean speaker: " : "English speaker: ") + m.text).join("\n");
+  }
+
+  async function translate(text, side, onPartial) {
+    const [from, to] = fromTo(side);
+    if (sampleFn) {
+      const ctx = contextLines();
+      const prompt =
+        "You are a live interpreter between a Korean university student and an English-speaking international student in a casual language-exchange chat.\n" +
+        `Translate the message below from ${from} into natural, friendly, spoken ${to}. Keep the meaning, tone and slang level. ` +
+        `If part of it is already in ${to}, keep that part. Output only the translation, with no quotes, notes or romanization.\n` +
+        (ctx ? `\nRecent conversation, for context only:\n${ctx}\n` : "") +
+        `\nMessage:\n${text}`;
+      const r = await sampleFn(prompt, { modelTier: "quick", onText: ({ text: t }) => onPartial && onPartial(t) });
+      return (r.text || "").trim();
+    }
+    const pair = side === "ko" ? "ko|en" : "en|ko";
+    const res = await fetch("https://api.mymemory.translated.net/get?q=" + encodeURIComponent(text) + "&langpair=" + pair);
+    if (!res.ok) throw new Error("http " + res.status);
+    const j = await res.json();
+    const t = j && j.responseData && j.responseData.translatedText;
+    if (!t) throw new Error("empty");
+    return t;
+  }
+
+  async function addMessage(side, text) {
+    text = (text || "").trim();
+    if (!text) return;
+    msgs = msgs.filter((m) => !m.example);
+    const m = { id: nextId++, side, text, tr: "", pending: true };
+    msgs.push(m);
+    render();
+    try {
+      let last = 0;
+      m.tr = await translate(text, side, (partial) => {
+        m.tr = partial;
+        const now = Date.now();
+        if (now - last > 120) { last = now; render(); }
+      });
+      m.pending = false;
+      render();
+      say(m.tr, LANG[side].other);
+    } catch (e) {
+      m.pending = false;
+      m.error = true;
+      render();
+      console.warn("translate failed", e);
+    }
+  }
+
+  // ---------- speech out ----------
+  function say(text, lang) {
+    if (!speakAloud || !text || !("speechSynthesis" in window)) return;
+    try {
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = LANG[lang].tts;
+      const v = speechSynthesis.getVoices().find((x) => x.lang && x.lang.replace("_", "-").toLowerCase().startsWith(lang));
+      if (v) u.voice = v;
+      speechSynthesis.cancel();
+      speechSynthesis.speak(u);
+    } catch (e) { /* speech output is optional */ }
+  }
+
+  // ---------- speech in ----------
+  let activeSide = null;
+  let buffer = "";
+  let commitTimer = 0;
+  let rec = null;
+
+  function setLive(side, text, hearing) {
+    for (const s of ["ko", "en"]) {
+      const el = $("live-" + s);
+      el.textContent = s === side ? text : "";
+      el.classList.toggle("hearing", s === side && hearing);
+    }
+  }
+  function setMicUI() {
+    for (const s of ["ko", "en"]) {
+      const b = $("mic-" + s);
+      const on = activeSide === s;
+      b.classList.toggle("on", on);
+      b.innerHTML = on ? STOP_SVG : MIC_SVG;
+      b.setAttribute("aria-pressed", String(on));
+    }
+  }
+  function commit(side) {
+    clearTimeout(commitTimer);
+    const t = buffer.trim();
+    buffer = "";
+    if (side && t) addMessage(side, t);
+  }
+  function listeningHint(side) {
+    return side === "ko" ? "듣고 있어요…" : "Listening…";
+  }
+
+  function stopListening() {
+    const side = activeSide;
+    if (dictation) dictation.stop().catch(() => {});
+    if (rec) { try { rec.stop(); } catch (e) {} }
+    commit(side);
+    activeSide = null;
+    setLive(null, "", false);
+    setMicUI();
+  }
+
+  function startListening(side) {
+    // Must run synchronously inside the click.
+    if (activeSide) { const prev = activeSide; if (dictation) dictation.stop().catch(() => {}); if (rec) { try { rec.abort(); } catch (e) {} } commit(prev); }
+    activeSide = side;
+    buffer = "";
+    setLive(side, listeningHint(side), true);
+    setMicUI();
+    if (dictation) {
+      dictation.start({ language: LANG[side].dict }).catch((e) => {
+        if (activeSide !== side) return;
+        activeSide = null; setMicUI();
+        const msg = {
+          not_granted: side === "ko" ? "마이크 사용이 허용되지 않았어요. 글자로 입력해 주세요." : "Microphone isn't allowed. Please type instead.",
+          unavailable: side === "ko" ? "이 화면에서는 음성 입력을 쓸 수 없어요." : "Voice input isn't available here.",
+          rate_limited: side === "ko" ? "잠시 후 다시 눌러 주세요." : "Please try again in a moment.",
+        }[e && e.code] || (side === "ko" ? "음성 입력을 시작하지 못했어요." : "Couldn't start voice input.");
+        setLive(side, msg, false);
+      });
+      return;
+    }
+    if (WebRec) {
+      rec = new WebRec();
+      rec.lang = LANG[side].rec;
+      rec.continuous = true;
+      rec.interimResults = true;
+      const mine = rec;
+      rec.onresult = (ev) => {
+        if (activeSide !== side) return;
+        let interim = "";
+        for (let i = ev.resultIndex; i < ev.results.length; i++) {
+          const r = ev.results[i];
+          if (r.isFinal) { buffer += " " + r[0].transcript; commit(side); }
+          else interim += r[0].transcript;
+        }
+        setLive(side, interim || listeningHint(side), true);
+      };
+      rec.onerror = (ev) => {
+        if (activeSide !== side) return;
+        if (ev.error === "not-allowed" || ev.error === "service-not-allowed") {
+          setLive(side, side === "ko" ? "마이크 사용이 허용되지 않았어요. 글자로 입력해 주세요." : "Microphone isn't allowed. Please type instead.", false);
+          activeSide = null; setMicUI();
+        }
+      };
+      rec.onend = () => {
+        if (rec !== mine) return;
+        if (activeSide === side) { commit(side); activeSide = null; setMicUI(); setLive(null, "", false); }
+      };
+      try { rec.start(); } catch (e) { activeSide = null; setMicUI(); }
+    }
+  }
+
+  function wireDictation(d) {
+    dictation = d;
+    d.onPartial(({ text }) => {
+      if (!activeSide) return;
+      setLive(activeSide, (buffer + " " + text).trim() || listeningHint(activeSide), true);
+      if (text) clearTimeout(commitTimer);
+    });
+    d.onFinal(({ text }) => {
+      if (!activeSide) return;
+      buffer += text;
+      setLive(activeSide, buffer.trim(), true);
+      const side = activeSide;
+      clearTimeout(commitTimer);
+      // A short pause after a settled phrase ends the sentence and sends it.
+      commitTimer = setTimeout(() => { if (activeSide === side) { commit(side); setLive(side, listeningHint(side), true); } }, 1100);
+    });
+    d.onState(({ state, reason }) => {
+      if (state !== "idle" || !activeSide) return;
+      const side = activeSide;
+      commit(side);
+      activeSide = null;
+      setMicUI();
+      setLive(null, "", false);
+      if (reason === "unavailable" || reason === "upstream_error") setLive(side, side === "ko" ? "음성 입력이 끊겼어요. 다시 눌러 주세요." : "Voice input stopped. Tap the mic again.", false);
+    });
+  }
+
+  // ---------- controls ----------
+  for (const side of ["ko", "en"]) {
+    $("form-" + side).addEventListener("submit", (e) => {
+      e.preventDefault();
+      const inp = $("input-" + side);
+      const v = inp.value;
+      inp.value = "";
+      addMessage(side, v);
+    });
+    $("mic-" + side).addEventListener("click", () => {
+      if (activeSide === side) stopListening(); else startListening(side);
+    });
+  }
+
+  const flipBtn = $("tog-flip");
+  function setFlip(on) {
+    $("side-en").classList.toggle("flip", on);
+    flipBtn.setAttribute("aria-pressed", String(on));
+    try { localStorage.setItem("mt-flip", on ? "1" : "0"); } catch (e) {}
+  }
+  flipBtn.addEventListener("click", () => setFlip(flipBtn.getAttribute("aria-pressed") !== "true"));
+
+  const voiceBtn = $("tog-voice");
+  voiceBtn.addEventListener("click", () => {
+    speakAloud = !speakAloud;
+    voiceBtn.setAttribute("aria-pressed", String(speakAloud));
+    if (!speakAloud && "speechSynthesis" in window) speechSynthesis.cancel();
+  });
+
+  $("tog-clear").addEventListener("click", () => { msgs = []; render(); });
+
+  // ---------- boot ----------
+  let flipPref = null;
+  try { flipPref = localStorage.getItem("mt-flip"); } catch (e) {}
+  setFlip(flipPref ? flipPref === "1" : true);
+  if ("speechSynthesis" in window) { try { speechSynthesis.getVoices(); } catch (e) {} }
+  setMicUI();
+  render();
+  updateStatus();
+  use("sample").then((s) => { if (s) { sampleFn = s; updateStatus(); } });
+  use("dictation").then((d) => { if (d) { wireDictation(d); updateStatus(); } });
+})();
+</script>
+
+</body>
+</html>
