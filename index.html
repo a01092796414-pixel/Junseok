@@ -143,6 +143,59 @@ button { -webkit-tap-highlight-color: transparent; }
 .tog[aria-pressed="true"] { color: var(--ink); border-color: var(--ink); }
 .status { color: var(--muted); font-size: 11.5px; width: 100%; text-align: center; }
 
+/* Solo mode: one person, one screen */
+.solo {
+  height: 100%; max-width: 760px; margin: 0 auto;
+  display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto auto; grid-template-columns: minmax(0, 1fr);
+  padding-left: max(12px, env(safe-area-inset-left, 0px));
+  padding-right: max(12px, env(safe-area-inset-right, 0px));
+  padding-block: 8px; gap: 8px;
+}
+.solo-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.solo-head .brand { margin-right: auto; }
+.solo-feed { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 12px 14px; }
+.solo-empty { color: var(--muted); font-size: 15px; display: grid; gap: 6px; margin: auto 0; text-align: center; padding: 12px; }
+.solo-empty > b { color: var(--ink); font-family: var(--font-display); font-size: 19px; }
+.solo-empty span b { color: var(--ink); font-weight: 600; }
+.card { display: grid; gap: 4px; border-radius: 14px; padding: 10px 12px; background: var(--c-soft); --c: var(--en); --c-soft: var(--en-soft); }
+.card.to-ko { --c: var(--ko); --c-soft: var(--ko-soft); }
+.card.live { background: transparent; border: 1.5px dashed var(--c); }
+.card .big { border: 0; background: transparent; padding: 0; text-align: left; cursor: pointer; font-size: 23px; line-height: 1.38; font-weight: 500; overflow-wrap: anywhere; color: var(--ink); }
+.card .big:lang(ko) { word-break: keep-all; overflow-wrap: break-word; }
+.card.live .big { font-style: italic; }
+.card .small { font-size: 13.5px; color: var(--muted); overflow-wrap: anywhere; }
+.card .tag { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--c); font-weight: 600; }
+.card.err .big { color: var(--danger); }
+.solo .composer { border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+.solo-mics { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.bigmic {
+  --c: var(--ko);
+  border: 0; border-radius: 16px; padding: 12px 10px; cursor: pointer;
+  background: var(--c); color: var(--panel);
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  font-weight: 600; font-size: 15px; line-height: 1.25; text-align: left;
+  touch-action: manipulation;
+}
+.bigmic.en { --c: var(--en); }
+.bigmic .ico { display: grid; place-items: center; flex: none; }
+.bigmic svg { width: 24px; height: 24px; }
+.bigmic small { display: block; font-weight: 400; font-size: 12px; opacity: .85; }
+.bigmic.on { animation: pulse 1.4s ease-in-out infinite; }
+.bigmic:disabled { opacity: .35; }
+.bigmic:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .bigmic.on { animation: none; outline: 3px solid var(--c); outline-offset: 3px; } }
+
+/* Full-screen card to show a Korean speaker */
+.show {
+  position: fixed; inset: 0; z-index: 30; background: var(--panel); color: var(--ink);
+  display: grid; grid-template-rows: 1fr auto; gap: 16px;
+  padding: calc(24px + env(safe-area-inset-top, 0px)) max(24px, env(safe-area-inset-right, 0px)) calc(20px + env(safe-area-inset-bottom, 0px)) max(24px, env(safe-area-inset-left, 0px));
+}
+.show-body { display: grid; align-content: center; gap: 18px; overflow-y: auto; }
+.show-text { font-size: clamp(30px, 9vw, 56px); line-height: 1.3; font-weight: 600; margin: 0; word-break: keep-all; overflow-wrap: break-word; }
+.show-sub { font-size: 16px; color: var(--muted); margin: 0; }
+.show .row { justify-content: center; }
+
 /* Settings sheet */
 .sheet-wrap { position: fixed; inset: 0; background: var(--scrim); display: grid; align-items: end; z-index: 20; }
 .sheet {
@@ -194,6 +247,7 @@ button { -webkit-tap-highlight-color: transparent; }
     <button class="tog" id="tog-copy" type="button">복사</button>
     <button class="tog" id="tog-clear" type="button">지우기</button>
     <button class="tog" id="tog-settings" type="button">설정</button>
+    <button class="tog" id="tog-solo" type="button">혼자 쓰기 · Solo</button>
     <div class="status" id="status"></div>
   </div>
 
@@ -213,17 +267,50 @@ button { -webkit-tap-highlight-color: transparent; }
   </section>
 </div>
 
+<section class="solo" id="solo" hidden aria-label="Solo translator">
+  <div class="solo-head" role="toolbar" aria-label="Solo controls">
+    <span class="brand"><em>마주</em><i>Talk</i></span>
+    <button class="tog" id="solo-pair" type="button">Face-to-face · 마주보기</button>
+    <button class="tog" id="solo-voice" type="button" aria-pressed="true">Read aloud</button>
+    <button class="tog" id="solo-polite" type="button" aria-pressed="true">Polite Korean</button>
+    <button class="tog" id="solo-copy" type="button">Copy</button>
+    <button class="tog" id="solo-clear" type="button">Clear</button>
+    <button class="tog" id="solo-settings" type="button">Settings</button>
+  </div>
+  <div class="feed solo-feed" id="feed-solo" aria-live="polite"></div>
+  <div class="note" id="note-solo"></div>
+  <form class="composer" id="form-solo" autocomplete="off">
+    <input id="input-solo" type="text" placeholder="Type in English or Korean" aria-label="Type in English or Korean" enterkeyhint="send">
+    <button class="send" type="submit">Translate</button>
+  </form>
+  <div class="solo-mics">
+    <button class="bigmic ko" id="mic-solo-ko" type="button"><span class="ico"></span><span>Listen to Korean<small>한국어 듣기 → English</small></span></button>
+    <button class="bigmic en" id="mic-solo-en" type="button"><span class="ico"></span><span>Speak English<small>→ 한국어로 보여주기</small></span></button>
+  </div>
+</section>
+
+<div class="show" id="show" hidden role="dialog" aria-modal="true" aria-label="Translation shown full screen">
+  <div class="show-body">
+    <p class="show-text" id="show-text"></p>
+    <p class="show-sub" id="show-sub"></p>
+  </div>
+  <div class="row">
+    <button class="btn" id="show-play" type="button">Play again · 다시 듣기</button>
+    <button class="btn primary" id="show-close" type="button">Close · 닫기</button>
+  </div>
+</div>
+
 <div class="sheet-wrap" id="sheet" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
-    <h2 id="sheet-title">설정</h2>
+    <h2 id="sheet-title">설정 · Settings</h2>
     <p>말하는 동안에는 빠른 무료 번역으로 바로 보여 주고, 문장이 끝나면 다시 번역해서 확정합니다. Claude API 키를 넣으면 확정 번역을 Claude가 해서 더 자연스러워집니다. 키가 없으면 무료 번역만 씁니다.</p>
     <div class="field">
-      <label for="api-key">Claude API 키 (선택)</label>
+      <label for="api-key">Claude API 키 (선택) · API key (optional)</label>
       <input id="api-key" type="password" placeholder="sk-ant-…" autocomplete="off" autocapitalize="off" spellcheck="false">
       <p>키는 이 아이폰의 브라우저에만 저장되고, 번역할 때 Anthropic에만 보냅니다. 키는 console.anthropic.com에서 만들 수 있어요.</p>
     </div>
     <div class="field">
-      <label for="model">Claude 모델</label>
+      <label for="model">Claude 모델 · Model</label>
       <select id="model">
         <option value="claude-opus-5-5">Claude Opus 5.5 · 가장 정확함</option>
         <option value="claude-sonnet-5-5">Claude Sonnet 5.5 · 빠르고 정확함</option>
@@ -250,9 +337,9 @@ button { -webkit-tap-highlight-color: transparent; }
       <div class="row"><button class="btn" id="slang-reset" type="button">기본 신조어 목록 다시 넣기</button></div>
     </div>
     <div class="row">
-      <button class="btn primary" id="save-settings" type="button">저장</button>
-      <button class="btn" id="test-key" type="button">번역 시험해 보기</button>
-      <button class="btn" id="close-settings" type="button">닫기</button>
+      <button class="btn primary" id="save-settings" type="button">저장 · Save</button>
+      <button class="btn" id="test-key" type="button">시험 · Test</button>
+      <button class="btn" id="close-settings" type="button">닫기 · Close</button>
     </div>
     <div class="result" id="test-result" aria-live="polite"></div>
     <div class="help">
@@ -325,6 +412,9 @@ button { -webkit-tap-highlight-color: transparent; }
   if (slangText == null) slangText = DEFAULT_SLANG;
   let slang = parseSlang(slangText);
   let editingId = null;
+  let mode = store.get("mt-mode") === "solo" ? "solo" : "pair";
+  let soloPolite = store.get("mt-polite") !== "0";
+  let soloMsgs = [];
 
   // "단어 = 뜻" lines -> [{term, meaning, stem, meaningStem}]
   function parseSlang(text) {
@@ -403,6 +493,13 @@ button { -webkit-tap-highlight-color: transparent; }
 
   const DIALECT_NAMES = { "경상도": "Gyeongsang", "전라도": "Jeolla", "충청도": "Chungcheong", "강원도": "Gangwon", "제주도": "Jeju" };
   function systemPrompt() {
+    if (mode === "solo") {
+      return SOLO_PROMPT +
+        "\n\nPeople may use current slang, internet abbreviations and memes. Understand the real meaning and carry it over naturally; never translate slang word for word." +
+        (soloPolite
+          ? "\n\nWhen translating into Korean, use polite 해요체 (존댓말) that is natural with strangers, staff, classmates and professors, in standard spelling."
+          : "\n\nWhen translating into Korean, use casual 반말 the way a student talks to a close friend, in standard spelling.");
+    }
     let p = BASE_PROMPT +
       "\n\nBoth students talk the way young Koreans and young English speakers really talk, including current slang, internet abbreviations, " +
       "initial-consonant shorthand (like ㄹㅇ or ㅇㅈ) and memes. Understand the real meaning and carry it over with an equivalent casual expression; " +
@@ -425,6 +522,12 @@ button { -webkit-tap-highlight-color: transparent; }
     return "Personal glossary for words in this message (use these meanings):\n" +
       hits.map((e) => "- " + e.term + " = " + e.meaning).join("\n") + "\n\n";
   }
+  const SOLO_PROMPT =
+    "You are a pocket interpreter for an English-speaking international student living in Korea. " +
+    "Some messages are Korean that people around the student said (classmates, professors, shop staff, announcements); translate those into clear, natural English. " +
+    "Others are English the student said or typed; translate those into Korean the student can show or play to a Korean person. " +
+    "Translate into the target language named in the request. Korean speech may be in a regional dialect, and speech recognition may have small errors; " +
+    "translate what the speaker most likely meant. Reply with the translation only: no quotes, notes, romanization or alternatives.";
   const BASE_PROMPT =
     "You are a live interpreter between a Korean university student and an English-speaking international student " +
     "who are doing a casual face-to-face language exchange. Translate each message you are given into the target language " +
@@ -433,8 +536,8 @@ button { -webkit-tap-highlight-color: transparent; }
     "Reply with the translation only: no quotes, notes, romanization or alternatives.";
 
   function contextLines() {
-    return msgs.filter((m) => !m.example && !m.pending && !m.error).slice(-6)
-      .map((m) => (m.side === "ko" ? "Korean student: " : "English-speaking student: ") + m.text).join("\n");
+    return (mode === "solo" ? soloMsgs : msgs).filter((m) => !m.example && !m.pending && !m.error).slice(-6)
+      .map((m) => (m.side === "ko" ? (mode === "solo" ? "Korean speaker: " : "Korean student: ") : (mode === "solo" ? "International student: " : "English-speaking student: ")) + m.text).join("\n");
   }
 
   async function claudeTranslate(text, side, onText) {
@@ -542,6 +645,7 @@ button { -webkit-tap-highlight-color: transparent; }
     renderQueued = true;
     requestAnimationFrame(() => {
       renderQueued = false;
+      if (mode === "solo") { renderSolo(); return; }
       for (const lang of ["ko", "en"]) {
         const feed = $("feed-" + lang);
         const atBottom = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 60;
@@ -553,8 +657,59 @@ button { -webkit-tap-highlight-color: transparent; }
     });
   }
 
+  const txt = (side, key) => (mode === "solo" ? LANG.en : LANG[side])[key];
   function setNote(side, text) {
-    for (const s of ["ko", "en"]) $("note-" + s).textContent = s === side ? (text || "") : "";
+    for (const s of ["ko", "en"]) $("note-" + s).textContent = (mode === "pair" && s === side) ? (text || "") : "";
+    $("note-solo").textContent = mode === "solo" && side ? (text || "") : "";
+  }
+
+  function makeCard(m, isLive) {
+    const toKo = m.side === "en";
+    const card = document.createElement("div");
+    card.className = "card" + (toKo ? " to-ko" : "") + (isLive ? " live" : "") + (m.error ? " err" : "");
+    const tag = document.createElement("div");
+    tag.className = "tag";
+    tag.textContent = toKo ? "English → 한국어" : "한국어 → English";
+    const big = document.createElement("button");
+    big.type = "button";
+    big.className = "big";
+    big.lang = toKo ? "ko" : "en";
+    big.textContent = m.error ? LANG.en.fail : (m.tr || (isLive ? "…" : LANG.en.wait));
+    if (!isLive && m.tr && !m.pending) {
+      big.addEventListener("click", () => openShow(m));
+      big.setAttribute("aria-label", "Show full screen: " + m.tr);
+    } else big.tabIndex = -1;
+    const small = document.createElement("div");
+    small.className = "small";
+    small.lang = m.side;
+    small.textContent = m.text;
+    card.append(tag, big, small);
+    return card;
+  }
+
+  function renderSolo() {
+    const feed = $("feed-solo");
+    const atBottom = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 60;
+    feed.textContent = "";
+    if (!soloMsgs.length && !(live && live.text)) {
+      const e = document.createElement("div");
+      e.className = "solo-empty";
+      e.innerHTML = "<b>Your pocket interpreter</b><span>Tap <b>Listen to Korean</b> when someone speaks Korean. You'll see English as they talk.</span><span>Tap <b>Speak English</b> to turn what you say into Korean. Tap the Korean to show it full screen.</span>";
+      feed.append(e);
+      return;
+    }
+    for (const m of soloMsgs) feed.append(makeCard(m, false));
+    if (live && live.text) feed.append(makeCard(live, true));
+    if (atBottom || live) feed.scrollTop = feed.scrollHeight;
+  }
+
+  function openShow(m) {
+    $("show-text").textContent = m.tr;
+    $("show-text").lang = m.side === "en" ? "ko" : "en";
+    $("show-sub").textContent = m.text;
+    $("show").hidden = false;
+    $("show-play").onclick = () => say(m.tr, LANG[m.side].other);
+    $("show-close").focus();
   }
 
   function updateStatus() {
@@ -590,9 +745,9 @@ button { -webkit-tap-highlight-color: transparent; }
   async function addMessage(side, text) {
     text = (text || "").trim();
     if (!text) return;
-    msgs = msgs.filter((m) => !m.example);
     const m = { id: nextId++, side, text, tr: "", pending: true };
-    msgs.push(m);
+    if (mode === "solo") soloMsgs.push(m);
+    else { msgs = msgs.filter((x) => !x.example); msgs.push(m); }
     render();
     try {
       m.tr = await translateFinal(text, side, (snap) => { m.tr = snap; render(); });
@@ -656,12 +811,14 @@ button { -webkit-tap-highlight-color: transparent; }
 
   function setMicUI() {
     for (const s of ["ko", "en"]) {
-      const b = $("mic-" + s);
       const on = activeSide === s;
-      b.classList.toggle("on", on);
-      b.innerHTML = on ? STOP_SVG : MIC_SVG;
-      b.setAttribute("aria-pressed", String(on));
-      b.disabled = !WebRec;
+      for (const b of [$("mic-" + s), $("mic-solo-" + s)]) {
+        b.classList.toggle("on", on);
+        const ico = b.querySelector(".ico") || b;
+        ico.innerHTML = on ? STOP_SVG : MIC_SVG;
+        b.setAttribute("aria-pressed", String(on));
+        b.disabled = !WebRec;
+      }
     }
   }
 
@@ -730,10 +887,10 @@ button { -webkit-tap-highlight-color: transparent; }
     r.onerror = (ev) => {
       if (rec !== r) return;
       if (ev.error === "not-allowed" || ev.error === "service-not-allowed") {
-        setNote(side, LANG[side].denied);
+        setNote(side, txt(side, "denied"));
         stopListening(true);
       } else if (ev.error === "language-not-supported") {
-        setNote(side, LANG[side].noMic);
+        setNote(side, txt(side, "noMic"));
         stopListening(true);
       }
       // "no-speech", "aborted", "network": onend decides whether to restart.
@@ -744,28 +901,28 @@ button { -webkit-tap-highlight-color: transparent; }
       // Safari ends the session on its own after a pause or about a minute. Send what we have and keep listening.
       commitSentence(side);
       transcript = ""; committedLen = 0;
-      if (restarts++ > 20) { setNote(side, LANG[side].tapAgain); stopListening(true); return; }
+      if (restarts++ > 20) { setNote(side, txt(side, "tapAgain")); stopListening(true); return; }
       try { rec = newRecognizer(side); rec.start(); }
-      catch (e) { setNote(side, LANG[side].tapAgain); stopListening(true); }
+      catch (e) { setNote(side, txt(side, "tapAgain")); stopListening(true); }
     };
     return r;
   }
 
   function startListening(side) {
     unlockVoice();
-    if (!WebRec) { setNote(side, LANG[side].noMic); return; }
+    if (!WebRec) { setNote(side, txt(side, "noMic")); return; }
     if (activeSide) stopListening(false);
     if ("speechSynthesis" in window) { try { speechSynthesis.cancel(); } catch (e) {} }
     activeSide = side;
     transcript = ""; committedLen = 0; restarts = 0;
     live = null;
-    setNote(side, LANG[side].listening);
+    setNote(side, txt(side, "listening"));
     setMicUI();
     try {
       rec = newRecognizer(side);
       rec.start();
     } catch (e) {
-      setNote(side, LANG[side].tapAgain);
+      setNote(side, txt(side, "tapAgain"));
       stopListening(true);
     }
   }
@@ -820,6 +977,7 @@ button { -webkit-tap-highlight-color: transparent; }
   function setVoice(on) {
     speakAloud = on;
     voiceBtn.setAttribute("aria-pressed", String(on));
+    $("solo-voice").setAttribute("aria-pressed", String(on));
     store.set("mt-voice", on ? "1" : "0");
     if (!on && "speechSynthesis" in window) { try { speechSynthesis.cancel(); } catch (e) {} }
   }
@@ -899,10 +1057,64 @@ button { -webkit-tap-highlight-color: transparent; }
   // pause listening when the app goes to the background
   document.addEventListener("visibilitychange", () => { if (document.hidden && activeSide) stopListening(false); });
 
+  // ---------------- solo mode ----------------
+  function setMode(next) {
+    if (activeSide) stopListening(false);
+    mode = next;
+    store.set("mt-mode", mode);
+    document.querySelector(".app").hidden = mode === "solo";
+    $("solo").hidden = mode !== "solo";
+    document.documentElement.lang = mode === "solo" ? "en" : "ko";
+    live = null;
+    setNote(null, "");
+    updateStatus();
+    render();
+  }
+  $("tog-solo").addEventListener("click", () => setMode("solo"));
+  $("solo-pair").addEventListener("click", () => setMode("pair"));
+  $("solo-voice").addEventListener("click", () => { unlockVoice(); setVoice(!speakAloud); });
+  function setPolite(on) {
+    soloPolite = on;
+    store.set("mt-polite", on ? "1" : "0");
+    const b = $("solo-polite");
+    b.setAttribute("aria-pressed", String(on));
+    b.textContent = on ? "Polite Korean" : "Casual Korean";
+  }
+  $("solo-polite").addEventListener("click", () => setPolite(!soloPolite));
+  $("solo-clear").addEventListener("click", () => { soloMsgs = []; live = null; render(); });
+  $("solo-settings").addEventListener("click", () => openSettings());
+  $("solo-copy").addEventListener("click", async () => {
+    const btn = $("solo-copy");
+    const text = soloMsgs.filter((m) => !m.error).map((m) => m.text + "\n   → " + (m.tr || "")).join("\n");
+    if (!text) { btn.textContent = "Nothing yet"; setTimeout(() => btn.textContent = "Copy", 1500); return; }
+    try { await navigator.clipboard.writeText(text); btn.textContent = "Copied"; } catch (e) { btn.textContent = "Couldn't copy"; }
+    setTimeout(() => btn.textContent = "Copy", 1500);
+  });
+  for (const s of ["ko", "en"]) {
+    $("mic-solo-" + s).addEventListener("click", () => {
+      if (activeSide === s) stopListening(false); else startListening(s);
+    });
+  }
+  $("form-solo").addEventListener("submit", (e) => {
+    e.preventDefault();
+    unlockVoice();
+    const inp = $("input-solo");
+    const v = inp.value.trim();
+    inp.value = "";
+    inp.blur();
+    if (!v) return;
+    // Hangul in the text means it's Korean.
+    addMessage(/[\u3131-\u318e\uac00-\ud7a3]/.test(v) ? "ko" : "en", v);
+  });
+  $("show-close").addEventListener("click", () => { $("show").hidden = true; });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") $("show").hidden = true; });
+
   // ---------------- boot ----------------
   const flipPref = store.get("mt-flip");
   setFlip(flipPref ? flipPref === "1" : true);
   setVoice(speakAloud);
+  setPolite(soloPolite);
+  setMode(mode);
   if ("speechSynthesis" in window) {
     try { speechSynthesis.getVoices(); speechSynthesis.addEventListener && speechSynthesis.addEventListener("voiceschanged", () => {}); } catch (e) {}
   }
