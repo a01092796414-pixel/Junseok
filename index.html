@@ -196,6 +196,34 @@ button { -webkit-tap-highlight-color: transparent; }
 .show-sub { font-size: 16px; color: var(--muted); margin: 0; }
 .show .row { justify-content: center; }
 
+/* Words screen */
+.words { position: fixed; inset: 0; z-index: 25; background: var(--bg); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.words-inner {
+  max-width: 640px; margin: 0 auto; display: grid; gap: 12px;
+  padding-top: calc(14px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.words-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; position: sticky; top: 0; background: var(--bg); padding-block: 6px; z-index: 1; }
+.words-head h2 { font-family: var(--font-display); font-size: 22px; margin: 0; }
+.words-intro { margin: 0; color: var(--muted); font-size: 13.5px; }
+.words-add { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto; gap: 8px; }
+.words-add input, .words-search { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); padding: 10px 12px; font-size: 16px; width: 100%; min-width: 0; }
+@media (max-width: 420px) { .words-add { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .words-add .btn { grid-column: 1 / -1; } }
+.words-msg { font-size: 13px; color: var(--en); min-height: 0; }
+.words-msg:empty { display: none; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.words-list { display: grid; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.word { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 10px 14px; border-top: 1px solid var(--line); align-items: center; }
+.word:first-child { border-top: 0; }
+.word-term { font-weight: 600; font-size: 16px; overflow-wrap: anywhere; }
+.word-cat { font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 99px; padding: 0 7px; margin-left: 6px; font-weight: 400; white-space: nowrap; }
+.word-cat.mine { color: var(--ko); border-color: var(--ko); }
+.word-meaning { grid-column: 1; color: var(--muted); font-size: 14px; overflow-wrap: anywhere; word-break: keep-all; }
+.word-del { grid-column: 2; grid-row: 1 / span 2; border: 1px solid var(--line); background: transparent; border-radius: 8px; padding: 6px 10px; cursor: pointer; font-size: 13px; color: var(--danger); }
+.words-empty { padding: 16px; color: var(--muted); text-align: center; }
+
 /* Settings sheet */
 .sheet-wrap { position: fixed; inset: 0; background: var(--scrim); display: grid; align-items: end; z-index: 20; }
 .sheet {
@@ -209,7 +237,7 @@ button { -webkit-tap-highlight-color: transparent; }
 .sheet h2 { font-family: var(--font-display); font-size: 20px; margin: 0; }
 .sheet p { margin: 0; color: var(--muted); font-size: 13.5px; }
 .field { display: grid; gap: 6px; }
-.field label { font-weight: 600; font-size: 14px; }
+.field label, .field .label { font-weight: 600; font-size: 14px; }
 .field textarea { border: 1px solid var(--line); border-radius: 10px; background: var(--bg); padding: 10px 12px; font-size: 16px; width: 100%; resize: vertical; line-height: 1.5; }
 .field p b { color: var(--ink); font-weight: 600; }
 .field input, .field select { border: 1px solid var(--line); border-radius: 10px; background: var(--bg); padding: 10px 12px; font-size: 16px; width: 100%; }
@@ -247,6 +275,7 @@ button { -webkit-tap-highlight-color: transparent; }
     <button class="tog" id="tog-copy" type="button">복사</button>
     <button class="tog" id="tog-clear" type="button">지우기</button>
     <button class="tog" id="tog-settings" type="button">설정</button>
+    <button class="tog" id="tog-words" type="button">단어장</button>
     <button class="tog" id="tog-solo" type="button">혼자 쓰기 · Solo</button>
     <div class="status" id="status"></div>
   </div>
@@ -275,6 +304,7 @@ button { -webkit-tap-highlight-color: transparent; }
     <button class="tog" id="solo-polite" type="button" aria-pressed="true">Polite Korean</button>
     <button class="tog" id="solo-copy" type="button">Copy</button>
     <button class="tog" id="solo-clear" type="button">Clear</button>
+    <button class="tog" id="solo-words" type="button">Words</button>
     <button class="tog" id="solo-settings" type="button">Settings</button>
   </div>
   <div class="feed solo-feed" id="feed-solo" aria-live="polite"></div>
@@ -297,6 +327,25 @@ button { -webkit-tap-highlight-color: transparent; }
   <div class="row">
     <button class="btn" id="show-play" type="button">Play again · 다시 듣기</button>
     <button class="btn primary" id="show-close" type="button">Close · 닫기</button>
+  </div>
+</div>
+
+<div class="words" id="words" hidden role="dialog" aria-modal="true" aria-labelledby="words-title">
+  <div class="words-inner">
+    <div class="words-head">
+      <h2 id="words-title">단어장 · Words</h2>
+      <button class="btn" id="words-close" type="button">닫기 · Close</button>
+    </div>
+    <p class="words-intro">번역할 때 여기 있는 말이 나오면 이 뜻대로 옮깁니다. 내 말버릇이나 친구들끼리 쓰는 말을 추가해 보세요. ‘-다’로 끝나는 말은 ‘킹받네’, ‘킹받아’처럼 바뀐 꼴도 알아봅니다.<br><span lang="en">When one of these words comes up, it's translated with this meaning. Add your own words too.</span></p>
+    <form class="words-add" id="words-add" autocomplete="off">
+      <input id="w-term" type="text" placeholder="단어 · word" aria-label="단어 · word" autocapitalize="off" spellcheck="false">
+      <input id="w-meaning" type="text" placeholder="뜻 · meaning" aria-label="뜻 · meaning" autocapitalize="off">
+      <button class="btn primary" type="submit">추가 · Add</button>
+    </form>
+    <div class="words-msg" id="w-msg" aria-live="polite"></div>
+    <input id="w-search" class="words-search" type="search" placeholder="찾기 · Search" aria-label="찾기 · Search" autocapitalize="off" spellcheck="false">
+    <div class="chips" id="w-cats" role="toolbar" aria-label="분류"></div>
+    <div class="words-list" id="w-list"></div>
   </div>
 </div>
 
@@ -331,10 +380,9 @@ button { -webkit-tap-highlight-color: transparent; }
       <p>사투리를 고르면 Claude가 그 지역 말투로 알아듣고 번역합니다. 음성 인식이 사투리를 잘못 받아 적으면, 내 말풍선을 눌러 고친 뒤 다시 보내세요.</p>
     </div>
     <div class="field">
-      <label for="slang">내 단어장 (사투리 · 신조어)</label>
-      <textarea id="slang" rows="7" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
-      <p>한 줄에 하나씩 <b>단어 = 뜻</b> 으로 적어 주세요. 예: <b>단디 = 제대로, 확실히</b>. 친구들끼리만 쓰는 말도 넣으면 그 뜻으로 번역합니다. ‘-다’로 끝나는 말은 ‘킹받네’, ‘킹받아’처럼 바뀐 꼴도 알아봅니다.</p>
-      <div class="row"><button class="btn" id="slang-reset" type="button">기본 신조어 목록 다시 넣기</button></div>
+      <span class="label">단어장 · Words</span>
+      <p>사투리, 신조어, 영어 슬랭의 뜻을 보고 내 단어를 추가할 수 있어요.</p>
+      <div class="row"><button class="btn" id="open-words-from-settings" type="button">단어장 열기 · Open words</button></div>
     </div>
     <div class="row">
       <button class="btn primary" id="save-settings" type="button">저장 · Save</button>
@@ -352,6 +400,7 @@ button { -webkit-tap-highlight-color: transparent; }
   </div>
 </div>
 
+<script src="words.js"></script>
 <script>
 (() => {
   "use strict";
@@ -389,73 +438,78 @@ button { -webkit-tap-highlight-color: transparent; }
   let apiKey = store.get("mt-key") || "";
   let model = store.get("mt-model") || "claude-opus-5-5";
   let dialect = store.get("mt-dialect") || "";
-  const DEFAULT_SLANG = [
-    "갓생 = 부지런하고 알차게 사는 삶",
-    "킹받다 = 엄청 열받다",
-    "존맛탱 = 정말 맛있다",
-    "JMT = 정말 맛있다",
-    "꾸안꾸 = 꾸민 듯 안 꾸민 듯 자연스러운 스타일",
-    "어쩔티비 = 어쩌라고 (장난으로 받아치는 말)",
-    "알잘딱깔센 = 알아서 잘 딱 깔끔하고 센스 있게",
-    "오운완 = 오늘 운동 완료",
-    "스불재 = 스스로 불러온 재앙",
-    "점메추 = 점심 메뉴 추천",
-    "중꺾마 = 중요한 건 꺾이지 않는 마음",
-    "억까 = 억지로 트집 잡아 비난하기",
-    "별다줄 = 별걸 다 줄인다",
-    "웃프다 = 웃기면서 슬프다",
-    "얼죽아 = 얼어 죽어도 아이스 아메리카노",
-    "ㄹㅇ = 진짜",
-    "ㅇㅈ = 인정",
-  ].join("\n");
-  let slangText = store.get("mt-slang");
-  if (slangText == null) slangText = DEFAULT_SLANG;
-  let slang = parseSlang(slangText);
+  const BUILTIN = window.MT_WORDS || {};
+  const CATS = Object.keys(BUILTIN);
+  let myWords = loadMyWords();
+  let slang = buildEntries();
   let editingId = null;
   let mode = store.get("mt-mode") === "solo" ? "solo" : "pair";
   let soloPolite = store.get("mt-polite") !== "0";
   let soloMsgs = [];
 
-  // "단어 = 뜻" lines -> [{term, meaning, stem, meaningStem}]
-  function parseSlang(text) {
+  // My own words: [{term, meaning}] in localStorage. Older versions kept "단어 = 뜻" lines in "mt-slang".
+  function loadMyWords() {
+    try {
+      const raw = store.get("mt-words");
+      if (raw) { const a = JSON.parse(raw); if (Array.isArray(a)) return a.filter((w) => w && w.term && w.meaning); }
+    } catch (e) {}
+    const old = store.get("mt-slang");
+    if (!old) return [];
+    const builtinTerms = new Set(Object.values(BUILTIN).flat().map((w) => w[0]));
     const out = [];
-    for (const raw of String(text || "").split(/\n/)) {
-      const line = raw.trim();
-      if (!line || line.startsWith("#")) continue;
+    for (const line of old.split(/\n/)) {
       const i = line.search(/[=:：]/);
       if (i <= 0) continue;
-      const term = line.slice(0, i).trim();
-      const meaning = line.slice(i + 1).trim();
-      if (!term || !meaning) continue;
+      const term = line.slice(0, i).trim(), meaning = line.slice(i + 1).trim();
+      if (term && meaning && !builtinTerms.has(term)) out.push({ term, meaning });
+    }
+    return out;
+  }
+  function saveMyWords() {
+    store.set("mt-words", JSON.stringify(myWords));
+    slang = buildEntries();
+  }
+
+  function escRe(x) { return x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+  // All words -> [{term, meaning, cat, stem, meaningStem, re}]. My words win over built-in ones.
+  function buildEntries() {
+    const byTerm = new Map();
+    for (const cat of CATS) for (const [term, meaning] of BUILTIN[cat]) byTerm.set(term.toLowerCase(), { term, meaning, cat });
+    for (const w of myWords) byTerm.set(w.term.toLowerCase(), { term: w.term, meaning: w.meaning, cat: "내 단어" });
+    const out = [];
+    for (const e of byTerm.values()) {
       // Korean predicates ("킹받다") are matched by their stem so "킹받네" also counts.
-      const isVerb = /[가-힣]다$/.test(term) && term.length >= 3;
-      out.push({
-        term, meaning,
-        stem: isVerb ? term.slice(0, -1) : term,
-        meaningStem: isVerb && /다$/.test(meaning.replace(/\s*\(.*\)$/, "")) ? meaning.replace(/\s*\(.*\)$/, "").slice(0, -1) : null,
-      });
+      const isVerb = /[가-힣]다$/.test(e.term) && e.term.length >= 3;
+      const bare = e.meaning.replace(/\s*\(.*\)$/, "");
+      e.stem = isVerb ? e.term.slice(0, -1) : e.term;
+      e.meaningStem = isVerb && /다$/.test(bare.split(/[,/]/)[0].trim()) ? bare.split(/[,/]/)[0].trim().slice(0, -1) : null;
+      e.latin = /^[a-z0-9 '\-]+$/i.test(e.term);
+      // English words must match as whole words ("sus" shouldn't fire inside "suspect").
+      e.re = new RegExp(e.latin ? "\\b" + escRe(e.stem) + "\\b" : escRe(e.stem), "gi");
+      out.push(e);
     }
     out.sort((a, b) => b.stem.length - a.stem.length);
     return out;
   }
   function slangIn(text) {
-    const low = text.toLowerCase();
-    return slang.filter((e) => low.includes(e.stem.toLowerCase()));
+    return slang.filter((e) => { e.re.lastIndex = 0; return e.re.test(text); });
   }
-  const escRe = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  // For the free engine, which doesn't know slang: swap terms for their plain meaning first.
-  function plainify(text) {
+  // For the free engine, which doesn't know slang: swap Korean terms for their plain meaning first.
+  // Meanings are written in Korean, so only Korean source text is rewritten.
+  function plainify(text, from) {
+    if (from !== "ko") return text;
     let out = text;
     for (const e of slangIn(text)) {
       const plain = e.meaningStem != null ? e.meaningStem : e.meaning.replace(/\s*\(.*\)$/, "").split(/[,/]/)[0].trim();
-      out = out.replace(new RegExp(escRe(e.stem), "gi"), plain);
+      e.re.lastIndex = 0;
+      out = out.replace(e.re, plain);
     }
     return out;
   }
 
   // ---------------- free translation (fast, used while speaking) ----------------
   async function freeTranslate(text, from, to, signal) {
-    text = plainify(text);
+    text = plainify(text, from);
     try {
       const url = "https://translate.googleapis.com/translate_a/single?client=gtx&dt=t&sl=" + from + "&tl=" + to + "&q=" + encodeURIComponent(text);
       const res = await fetch(url, { signal });
@@ -1003,7 +1057,6 @@ button { -webkit-tap-highlight-color: transparent; }
     $("api-key").value = apiKey;
     $("model").value = model;
     $("dialect").value = dialect;
-    $("slang").value = slangText;
     $("test-result").textContent = "";
     $("test-result").className = "result";
     sheet.hidden = false;
@@ -1013,10 +1066,7 @@ button { -webkit-tap-highlight-color: transparent; }
     apiKey = $("api-key").value.trim();
     model = $("model").value;
     dialect = $("dialect").value;
-    slangText = $("slang").value;
-    slang = parseSlang(slangText);
     store.set("mt-dialect", dialect);
-    store.set("mt-slang", slangText || " ");
     store.set("mt-key", apiKey);
     store.set("mt-model", model);
     claudeNotice = "";
@@ -1024,12 +1074,93 @@ button { -webkit-tap-highlight-color: transparent; }
     if (apiKey) loadSdk().catch(() => {});
   }
   $("tog-settings").addEventListener("click", openSettings);
-  $("slang-reset").addEventListener("click", () => {
-    const cur = $("slang").value.trim();
-    const have = new Set(parseSlang(cur).map((e) => e.term));
-    const add = DEFAULT_SLANG.split("\n").filter((l) => !have.has(l.split("=")[0].trim()));
-    $("slang").value = (cur ? cur + "\n" : "") + add.join("\n");
+  // ---------------- words screen ----------------
+  let wordsCat = "전체";
+  function openWords() {
+    if (activeSide) stopListening(false);
+    sheet.hidden = true;
+    $("w-msg").textContent = "";
+    renderWords();
+    $("words").hidden = false;
+  }
+  function renderWords() {
+    const cats = ["전체", "내 단어", ...CATS];
+    const bar = $("w-cats");
+    bar.textContent = "";
+    for (const c of cats) {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "tog";
+      const n = c === "전체" ? slang.length : slang.filter((e) => e.cat === c).length;
+      b.textContent = c + " " + n;
+      b.setAttribute("aria-pressed", String(c === wordsCat));
+      b.addEventListener("click", () => { wordsCat = c; renderWords(); });
+      bar.append(b);
+    }
+    const q = $("w-search").value.trim().toLowerCase();
+    const order = new Map([["내 단어", 0], ...CATS.map((c, i) => [c, i + 1])]);
+    const items = slang
+      .filter((e) => wordsCat === "전체" || e.cat === wordsCat)
+      .filter((e) => !q || e.term.toLowerCase().includes(q) || e.meaning.toLowerCase().includes(q))
+      .sort((a, b) => (order.get(a.cat) - order.get(b.cat)) || a.term.localeCompare(b.term, "ko"));
+    const list = $("w-list");
+    list.textContent = "";
+    if (!items.length) {
+      const e = document.createElement("div");
+      e.className = "words-empty";
+      e.textContent = wordsCat === "내 단어" && !q ? "아직 추가한 단어가 없어요. 위에서 단어와 뜻을 넣어 보세요." : "찾는 단어가 없어요. 위에서 직접 추가할 수 있어요.";
+      list.append(e);
+      return;
+    }
+    for (const e of items) {
+      const row = document.createElement("div");
+      row.className = "word";
+      const t = document.createElement("div");
+      t.className = "word-term";
+      t.textContent = e.term;
+      const c = document.createElement("span");
+      c.className = "word-cat" + (e.cat === "내 단어" ? " mine" : "");
+      c.textContent = e.cat;
+      t.append(c);
+      const m = document.createElement("div");
+      m.className = "word-meaning";
+      m.textContent = e.meaning;
+      row.append(t, m);
+      if (e.cat === "내 단어") {
+        const d = document.createElement("button");
+        d.type = "button"; d.className = "word-del";
+        d.textContent = "삭제";
+        d.setAttribute("aria-label", e.term + " 삭제");
+        d.addEventListener("click", () => {
+          myWords = myWords.filter((w) => w.term.toLowerCase() !== e.term.toLowerCase());
+          saveMyWords();
+          $("w-msg").textContent = "‘" + e.term + "’을(를) 지웠어요.";
+          renderWords();
+        });
+        row.append(d);
+      }
+      list.append(row);
+    }
+  }
+  $("words-add").addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    const term = $("w-term").value.trim();
+    const meaning = $("w-meaning").value.trim();
+    if (!term || !meaning) { $("w-msg").textContent = "단어와 뜻을 둘 다 적어 주세요."; return; }
+    const had = myWords.some((w) => w.term.toLowerCase() === term.toLowerCase());
+    myWords = myWords.filter((w) => w.term.toLowerCase() !== term.toLowerCase());
+    myWords.push({ term, meaning });
+    saveMyWords();
+    $("w-term").value = ""; $("w-meaning").value = "";
+    $("w-msg").textContent = "‘" + term + "’ = " + meaning + (had ? " 로 바꿨어요." : " 을(를) 추가했어요.");
+    wordsCat = "내 단어";
+    renderWords();
   });
+  $("w-search").addEventListener("input", renderWords);
+  $("words-close").addEventListener("click", () => { $("words").hidden = true; });
+  $("tog-words").addEventListener("click", openWords);
+  $("solo-words").addEventListener("click", openWords);
+  $("open-words-from-settings").addEventListener("click", openWords);
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") $("words").hidden = true; });
   $("close-settings").addEventListener("click", closeSettings);
   sheet.addEventListener("click", (e) => { if (e.target === sheet) closeSettings(); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !sheet.hidden) closeSettings(); });
