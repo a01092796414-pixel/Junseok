@@ -1,0 +1,51 @@
+{
+ "id": "btc-hold",
+ "initial_cash": 50000,
+ "cash": 0.0,
+ "qty": 0.0005032010019286074,
+ "created": "2026-11-12",
+ "last_decision_date": "2026-11-17",
+ "halted": false,
+ "trades": [
+  {
+   "date": "2026-11-12",
+   "side": "buy",
+   "price": 99314215.0,
+   "qty": 0.0005032010019286074,
+   "amount": 49975.01,
+   "fee": 24.99,
+   "open": 100338000.0,
+   "gap_vs_open": -0.01119
+  }
+ ],
+ "equity": [
+  {
+   "date": "2026-11-12",
+   "value": 49925.09
+  },
+  {
+   "date": "2026-11-13",
+   "value": 48472.85
+  },
+  {
+   "date": "2026-11-14",
+   "value": 47035.2
+  },
+  {
+   "date": "2026-11-15",
+   "value": 44482.97
+  },
+  {
+   "date": "2026-11-16",
+   "value": 45226.2
+  },
+  {
+   "date": "2026-11-17",
+   "value": 44460.32
+  }
+ ],
+ "last_signal": 1,
+ "last_action": "hold-position",
+ "last_price": 88355000.0,
+ "last_note": ""
+}

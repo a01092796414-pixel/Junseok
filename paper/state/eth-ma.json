@@ -1,0 +1,40 @@
+{
+ "id": "eth-ma",
+ "initial_cash": 50000,
+ "cash": 50000,
+ "qty": 0.0,
+ "created": "2026-11-12",
+ "last_decision_date": "2026-11-17",
+ "halted": false,
+ "trades": [],
+ "equity": [
+  {
+   "date": "2026-11-12",
+   "value": 50000.0
+  },
+  {
+   "date": "2026-11-13",
+   "value": 50000.0
+  },
+  {
+   "date": "2026-11-14",
+   "value": 50000.0
+  },
+  {
+   "date": "2026-11-15",
+   "value": 50000.0
+  },
+  {
+   "date": "2026-11-16",
+   "value": 50000.0
+  },
+  {
+   "date": "2026-11-17",
+   "value": 50000.0
+  }
+ ],
+ "last_signal": 0,
+ "last_action": "stay-cash",
+ "last_price": 2481000.0,
+ "last_note": ""
+}

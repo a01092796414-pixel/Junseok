@@ -1,0 +1,270 @@
+{
+ "updated": "2026-11-17T09:07+09:00",
+ "stop": false,
+ "accounts": [
+  {
+   "id": "btc-momentum",
+   "name": "비트코인 모멘텀",
+   "market": "KRW-BTC",
+   "control": false,
+   "strategy": "모멘텀 (120일)",
+   "enabled": true,
+   "initial": 50000,
+   "equity": 46965.0,
+   "returnPct": -6.07,
+   "position": "현금",
+   "lastAction": "stay-cash",
+   "lastDate": "2026-11-17",
+   "lastNote": "",
+   "trades": 2,
+   "since": "2026-11-12",
+   "avgGapPct": 0.656,
+   "history": [
+    {
+     "date": "2026-11-12",
+     "value": 49925.09
+    },
+    {
+     "date": "2026-11-13",
+     "value": 48472.85
+    },
+    {
+     "date": "2026-11-14",
+     "value": 46964.67
+    },
+    {
+     "date": "2026-11-15",
+     "value": 46964.67
+    },
+    {
+     "date": "2026-11-16",
+     "value": 46964.67
+    },
+    {
+     "date": "2026-11-17",
+     "value": 46964.67
+    }
+   ]
+  },
+  {
+   "id": "eth-ma",
+   "name": "이더리움 이동평균",
+   "market": "KRW-ETH",
+   "control": false,
+   "strategy": "이동평균 교차 (20일 / 60일)",
+   "enabled": true,
+   "initial": 50000,
+   "equity": 50000.0,
+   "returnPct": 0.0,
+   "position": "현금",
+   "lastAction": "stay-cash",
+   "lastDate": "2026-11-17",
+   "lastNote": "",
+   "trades": 0,
+   "since": "2026-11-12",
+   "avgGapPct": null,
+   "history": [
+    {
+     "date": "2026-11-12",
+     "value": 50000.0
+    },
+    {
+     "date": "2026-11-13",
+     "value": 50000.0
+    },
+    {
+     "date": "2026-11-14",
+     "value": 50000.0
+    },
+    {
+     "date": "2026-11-15",
+     "value": 50000.0
+    },
+    {
+     "date": "2026-11-16",
+     "value": 50000.0
+    },
+    {
+     "date": "2026-11-17",
+     "value": 50000.0
+    }
+   ]
+  },
+  {
+   "id": "btc-ma",
+   "name": "비트코인 이동평균",
+   "market": "KRW-BTC",
+   "control": true,
+   "strategy": "이동평균 교차 (20일 / 60일)",
+   "enabled": true,
+   "initial": 50000,
+   "equity": 50000.0,
+   "returnPct": 0.0,
+   "position": "현금",
+   "lastAction": "stay-cash",
+   "lastDate": "2026-11-17",
+   "lastNote": "",
+   "trades": 0,
+   "since": "2026-11-12",
+   "avgGapPct": null,
+   "history": [
+    {
+     "date": "2026-11-12",
+     "value": 50000.0
+    },
+    {
+     "date": "2026-11-13",
+     "value": 50000.0
+    },
+    {
+     "date": "2026-11-14",
+     "value": 50000.0
+    },
+    {
+     "date": "2026-11-15",
+     "value": 50000.0
+    },
+    {
+     "date": "2026-11-16",
+     "value": 50000.0
+    },
+    {
+     "date": "2026-11-17",
+     "value": 50000.0
+    }
+   ]
+  },
+  {
+   "id": "eth-momentum",
+   "name": "이더리움 모멘텀",
+   "market": "KRW-ETH",
+   "control": true,
+   "strategy": "모멘텀 (120일)",
+   "enabled": true,
+   "initial": 50000,
+   "equity": 49129.0,
+   "returnPct": -1.74,
+   "position": "현금",
+   "lastAction": "stay-cash",
+   "lastDate": "2026-11-17",
+   "lastNote": "",
+   "trades": 2,
+   "since": "2026-11-12",
+   "avgGapPct": 0.577,
+   "history": [
+    {
+     "date": "2026-11-12",
+     "value": 49925.09
+    },
+    {
+     "date": "2026-11-13",
+     "value": 49128.8
+    },
+    {
+     "date": "2026-11-14",
+     "value": 49128.8
+    },
+    {
+     "date": "2026-11-15",
+     "value": 49128.8
+    },
+    {
+     "date": "2026-11-16",
+     "value": 49128.8
+    },
+    {
+     "date": "2026-11-17",
+     "value": 49128.8
+    }
+   ]
+  },
+  {
+   "id": "btc-hold",
+   "name": "비트코인 보유",
+   "market": "KRW-BTC",
+   "control": true,
+   "strategy": "매수 후 보유",
+   "enabled": true,
+   "initial": 50000,
+   "equity": 44460.0,
+   "returnPct": -11.08,
+   "position": "보유",
+   "lastAction": "hold-position",
+   "lastDate": "2026-11-17",
+   "lastNote": "",
+   "trades": 1,
+   "since": "2026-11-12",
+   "avgGapPct": 1.119,
+   "history": [
+    {
+     "date": "2026-11-12",
+     "value": 49925.09
+    },
+    {
+     "date": "2026-11-13",
+     "value": 48472.85
+    },
+    {
+     "date": "2026-11-14",
+     "value": 47035.2
+    },
+    {
+     "date": "2026-11-15",
+     "value": 44482.97
+    },
+    {
+     "date": "2026-11-16",
+     "value": 45226.2
+    },
+    {
+     "date": "2026-11-17",
+     "value": 44460.32
+    }
+   ]
+  },
+  {
+   "id": "eth-hold",
+   "name": "이더리움 보유",
+   "market": "KRW-ETH",
+   "control": true,
+   "strategy": "매수 후 보유",
+   "enabled": true,
+   "initial": 50000,
+   "equity": 44813.0,
+   "returnPct": -10.37,
+   "position": "보유",
+   "lastAction": "hold-position",
+   "lastDate": "2026-11-17",
+   "lastNote": "",
+   "trades": 1,
+   "since": "2026-11-12",
+   "avgGapPct": 0.861,
+   "history": [
+    {
+     "date": "2026-11-12",
+     "value": 49925.09
+    },
+    {
+     "date": "2026-11-13",
+     "value": 49202.58
+    },
+    {
+     "date": "2026-11-14",
+     "value": 47721.45
+    },
+    {
+     "date": "2026-11-15",
+     "value": 44072.8
+    },
+    {
+     "date": "2026-11-16",
+     "value": 45572.0
+    },
+    {
+     "date": "2026-11-17",
+     "value": 44813.37
+    }
+   ]
+  }
+ ]
+}
