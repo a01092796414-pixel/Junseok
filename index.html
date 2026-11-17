@@ -102,7 +102,8 @@ button { -webkit-tap-highlight-color: transparent; }
 }
 .bubble:lang(ko) { word-break: keep-all; overflow-wrap: break-word; }
 .theirs .bubble { background: var(--c-soft); font-size: 22px; line-height: 1.38; font-weight: 500; }
-.mine .bubble { background: transparent; border: 1px solid var(--line); font-size: 14.5px; color: var(--muted); cursor: default; }
+.mine .bubble { background: transparent; border: 1px solid var(--line); font-size: 14.5px; color: var(--muted); }
+.msg.editing .bubble { border-color: var(--c); color: var(--ink); }
 .msg.live .bubble { background: transparent; border: 1.5px dashed var(--c); font-style: italic; }
 .msg.live.mine .bubble { color: var(--ink); }
 .bubble:focus-visible, .mic:focus-visible, .send:focus-visible, .tog:focus-visible { outline: 2px solid var(--c, var(--en)); outline-offset: 2px; }
@@ -156,6 +157,8 @@ button { -webkit-tap-highlight-color: transparent; }
 .sheet p { margin: 0; color: var(--muted); font-size: 13.5px; }
 .field { display: grid; gap: 6px; }
 .field label { font-weight: 600; font-size: 14px; }
+.field textarea { border: 1px solid var(--line); border-radius: 10px; background: var(--bg); padding: 10px 12px; font-size: 16px; width: 100%; resize: vertical; line-height: 1.5; }
+.field p b { color: var(--ink); font-weight: 600; }
 .field input, .field select { border: 1px solid var(--line); border-radius: 10px; background: var(--bg); padding: 10px 12px; font-size: 16px; width: 100%; }
 .row { display: flex; gap: 8px; flex-wrap: wrap; }
 .btn { border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 10px 14px; cursor: pointer; }
@@ -227,6 +230,25 @@ button { -webkit-tap-highlight-color: transparent; }
         <option value="claude-haiku-5-5">Claude Haiku 5.5 · 가장 빠르고 저렴함</option>
       </select>
     </div>
+    <div class="field">
+      <label for="dialect">내 한국어 말투</label>
+      <select id="dialect">
+        <option value="">표준어</option>
+        <option value="경상도">경상도 사투리</option>
+        <option value="전라도">전라도 사투리</option>
+        <option value="충청도">충청도 사투리</option>
+        <option value="강원도">강원도 사투리</option>
+        <option value="제주도">제주도 사투리</option>
+        <option value="mixed">여러 지역이 섞여 있음</option>
+      </select>
+      <p>사투리를 고르면 Claude가 그 지역 말투로 알아듣고 번역합니다. 음성 인식이 사투리를 잘못 받아 적으면, 내 말풍선을 눌러 고친 뒤 다시 보내세요.</p>
+    </div>
+    <div class="field">
+      <label for="slang">내 단어장 (사투리 · 신조어)</label>
+      <textarea id="slang" rows="7" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
+      <p>한 줄에 하나씩 <b>단어 = 뜻</b> 으로 적어 주세요. 예: <b>단디 = 제대로, 확실히</b>. 친구들끼리만 쓰는 말도 넣으면 그 뜻으로 번역합니다. ‘-다’로 끝나는 말은 ‘킹받네’, ‘킹받아’처럼 바뀐 꼴도 알아봅니다.</p>
+      <div class="row"><button class="btn" id="slang-reset" type="button">기본 신조어 목록 다시 넣기</button></div>
+    </div>
     <div class="row">
       <button class="btn primary" id="save-settings" type="button">저장</button>
       <button class="btn" id="test-key" type="button">번역 시험해 보기</button>
@@ -279,9 +301,71 @@ button { -webkit-tap-highlight-color: transparent; }
   let live = null;        // { side, text, tr }
   let apiKey = store.get("mt-key") || "";
   let model = store.get("mt-model") || "claude-opus-5-5";
+  let dialect = store.get("mt-dialect") || "";
+  const DEFAULT_SLANG = [
+    "갓생 = 부지런하고 알차게 사는 삶",
+    "킹받다 = 엄청 열받다",
+    "존맛탱 = 정말 맛있다",
+    "JMT = 정말 맛있다",
+    "꾸안꾸 = 꾸민 듯 안 꾸민 듯 자연스러운 스타일",
+    "어쩔티비 = 어쩌라고 (장난으로 받아치는 말)",
+    "알잘딱깔센 = 알아서 잘 딱 깔끔하고 센스 있게",
+    "오운완 = 오늘 운동 완료",
+    "스불재 = 스스로 불러온 재앙",
+    "점메추 = 점심 메뉴 추천",
+    "중꺾마 = 중요한 건 꺾이지 않는 마음",
+    "억까 = 억지로 트집 잡아 비난하기",
+    "별다줄 = 별걸 다 줄인다",
+    "웃프다 = 웃기면서 슬프다",
+    "얼죽아 = 얼어 죽어도 아이스 아메리카노",
+    "ㄹㅇ = 진짜",
+    "ㅇㅈ = 인정",
+  ].join("\n");
+  let slangText = store.get("mt-slang");
+  if (slangText == null) slangText = DEFAULT_SLANG;
+  let slang = parseSlang(slangText);
+  let editingId = null;
+
+  // "단어 = 뜻" lines -> [{term, meaning, stem, meaningStem}]
+  function parseSlang(text) {
+    const out = [];
+    for (const raw of String(text || "").split(/\n/)) {
+      const line = raw.trim();
+      if (!line || line.startsWith("#")) continue;
+      const i = line.search(/[=:：]/);
+      if (i <= 0) continue;
+      const term = line.slice(0, i).trim();
+      const meaning = line.slice(i + 1).trim();
+      if (!term || !meaning) continue;
+      // Korean predicates ("킹받다") are matched by their stem so "킹받네" also counts.
+      const isVerb = /[가-힣]다$/.test(term) && term.length >= 3;
+      out.push({
+        term, meaning,
+        stem: isVerb ? term.slice(0, -1) : term,
+        meaningStem: isVerb && /다$/.test(meaning.replace(/\s*\(.*\)$/, "")) ? meaning.replace(/\s*\(.*\)$/, "").slice(0, -1) : null,
+      });
+    }
+    out.sort((a, b) => b.stem.length - a.stem.length);
+    return out;
+  }
+  function slangIn(text) {
+    const low = text.toLowerCase();
+    return slang.filter((e) => low.includes(e.stem.toLowerCase()));
+  }
+  const escRe = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // For the free engine, which doesn't know slang: swap terms for their plain meaning first.
+  function plainify(text) {
+    let out = text;
+    for (const e of slangIn(text)) {
+      const plain = e.meaningStem != null ? e.meaningStem : e.meaning.replace(/\s*\(.*\)$/, "").split(/[,/]/)[0].trim();
+      out = out.replace(new RegExp(escRe(e.stem), "gi"), plain);
+    }
+    return out;
+  }
 
   // ---------------- free translation (fast, used while speaking) ----------------
   async function freeTranslate(text, from, to, signal) {
+    text = plainify(text);
     try {
       const url = "https://translate.googleapis.com/translate_a/single?client=gtx&dt=t&sl=" + from + "&tl=" + to + "&q=" + encodeURIComponent(text);
       const res = await fetch(url, { signal });
@@ -317,7 +401,31 @@ button { -webkit-tap-highlight-color: transparent; }
     return { client, Anthropic };
   }
 
-  const SYSTEM_PROMPT =
+  const DIALECT_NAMES = { "경상도": "Gyeongsang", "전라도": "Jeolla", "충청도": "Chungcheong", "강원도": "Gangwon", "제주도": "Jeju" };
+  function systemPrompt() {
+    let p = BASE_PROMPT +
+      "\n\nBoth students talk the way young Koreans and young English speakers really talk, including current slang, internet abbreviations, " +
+      "initial-consonant shorthand (like ㄹㅇ or ㅇㅈ) and memes. Understand the real meaning and carry it over with an equivalent casual expression; " +
+      "never translate slang word for word.";
+    if (dialect === "mixed") {
+      p += "\n\nThe Korean student speaks a regional Korean dialect (satoori) mixed from several regions, not standard Seoul Korean. " +
+        "Read dialect words, endings and intonation-based question forms by their meaning.";
+    } else if (dialect) {
+      p += "\n\nThe Korean student speaks " + DIALECT_NAMES[dialect] + " dialect (" + dialect + " 사투리), not standard Seoul Korean. " +
+        "Read dialect vocabulary, verb endings and question forms by their meaning in that dialect. " +
+        "The speech recognizer was built for standard Korean, so dialect words may come out misspelled or as similar-sounding standard words; " +
+        "use the dialect and context to recover what was meant.";
+    }
+    p += "\n\nWhen translating into Korean, write casual, friendly 반말 the way a Korean university student would text a friend, in standard spelling.";
+    return p;
+  }
+  function glossaryFor(text) {
+    const hits = slangIn(text);
+    if (!hits.length) return "";
+    return "Personal glossary for words in this message (use these meanings):\n" +
+      hits.map((e) => "- " + e.term + " = " + e.meaning).join("\n") + "\n\n";
+  }
+  const BASE_PROMPT =
     "You are a live interpreter between a Korean university student and an English-speaking international student " +
     "who are doing a casual face-to-face language exchange. Translate each message you are given into the target language " +
     "named in the request, the way a friendly bilingual student would say it out loud: natural, short, and matching the " +
@@ -335,11 +443,12 @@ button { -webkit-tap-highlight-color: transparent; }
     const ctx = contextLines();
     const content =
       (ctx ? "Recent conversation, for context only:\n" + ctx + "\n\n" : "") +
+      glossaryFor(text) +
       "Translate this " + from + " message into " + to + ":\n" + text;
     const params = {
       model,
       max_tokens: 4000,
-      system: SYSTEM_PROMPT,
+      system: systemPrompt(),
       output_config: { effort: "low" },
       messages: [{ role: "user", content }],
     };
@@ -400,10 +509,19 @@ button { -webkit-tap-highlight-color: transparent; }
     b.type = "button";
     b.className = "bubble";
     b.lang = lang;
-    if (mine) b.textContent = m.text;
+    if (mine) {
+      b.textContent = m.text;
+      if (!isLive && !m.example) {
+        b.addEventListener("click", () => startEdit(m));
+        b.setAttribute("aria-label", (lang === "ko" ? "고치기: " : "Edit: ") + m.text);
+        if (m.id === editingId) row.classList.add("editing");
+      }
+    }
     else if (m.error) b.textContent = LANG[lang].fail;
     else b.textContent = m.tr || (isLive ? "…" : LANG[lang].wait);
-    if (!mine && !isLive && m.tr && !m.pending) {
+    if (mine) {
+      /* handled above */
+    } else if (!isLive && m.tr && !m.pending) {
       b.addEventListener("click", () => say(m.tr, lang));
       b.setAttribute("aria-label", (lang === "ko" ? "다시 듣기: " : "Play again: ") + m.tr);
     } else {
@@ -441,11 +559,34 @@ button { -webkit-tap-highlight-color: transparent; }
 
   function updateStatus() {
     const engine = apiKey ? "번역: Claude (" + ({ "claude-opus-5-5": "Opus 5.5", "claude-sonnet-5-5": "Sonnet 5.5", "claude-haiku-5-5": "Haiku 5.5" }[model] || model) + ")" : "번역: 무료 번역";
-    const mic = WebRec ? "" : " · 음성 입력 안 됨";
+    const mic = (dialect ? " · " + (dialect === "mixed" ? "사투리" : dialect + " 사투리") : "") + (WebRec ? "" : " · 음성 입력 안 됨");
     $("status").textContent = claudeNotice || (engine + mic);
   }
 
   // ---------------- messages ----------------
+  function startEdit(m) {
+    if (activeSide) stopListening(false);
+    editingId = m.id;
+    const inp = $("input-" + m.side);
+    inp.value = m.text;
+    setNote(m.side, m.side === "ko" ? "고친 뒤 보내기를 누르면 다시 번역해요. 비우고 보내면 취소돼요." : "Edit and send to translate again. Send it empty to cancel.");
+    render();
+    inp.focus();
+  }
+
+  async function retranslate(m, text) {
+    m.text = text; m.tr = ""; m.pending = true; m.error = false;
+    render();
+    try {
+      m.tr = await translateFinal(text, m.side, (snap) => { m.tr = snap; render(); });
+      m.pending = false;
+      render();
+      queueSpeech(m.tr, LANG[m.side].other);
+    } catch (e) {
+      m.pending = false; m.error = true; render();
+    }
+  }
+
   async function addMessage(side, text) {
     text = (text || "").trim();
     if (!text) return;
@@ -648,6 +789,16 @@ button { -webkit-tap-highlight-color: transparent; }
       unlockVoice();
       const inp = $("input-" + side);
       const v = inp.value;
+      if (editingId != null) {
+        const m = msgs.find((x) => x.id === editingId);
+        editingId = null;
+        inp.value = "";
+        inp.blur();
+        setNote(null, "");
+        if (m && v.trim() && v.trim() !== m.text) retranslate(m, v.trim());
+        else render();
+        return;
+      }
       inp.value = "";
       inp.blur();
       addMessage(side, v);
@@ -693,6 +844,8 @@ button { -webkit-tap-highlight-color: transparent; }
     if (activeSide) stopListening(false);
     $("api-key").value = apiKey;
     $("model").value = model;
+    $("dialect").value = dialect;
+    $("slang").value = slangText;
     $("test-result").textContent = "";
     $("test-result").className = "result";
     sheet.hidden = false;
@@ -701,6 +854,11 @@ button { -webkit-tap-highlight-color: transparent; }
   function saveSettings() {
     apiKey = $("api-key").value.trim();
     model = $("model").value;
+    dialect = $("dialect").value;
+    slangText = $("slang").value;
+    slang = parseSlang(slangText);
+    store.set("mt-dialect", dialect);
+    store.set("mt-slang", slangText || " ");
     store.set("mt-key", apiKey);
     store.set("mt-model", model);
     claudeNotice = "";
@@ -708,6 +866,12 @@ button { -webkit-tap-highlight-color: transparent; }
     if (apiKey) loadSdk().catch(() => {});
   }
   $("tog-settings").addEventListener("click", openSettings);
+  $("slang-reset").addEventListener("click", () => {
+    const cur = $("slang").value.trim();
+    const have = new Set(parseSlang(cur).map((e) => e.term));
+    const add = DEFAULT_SLANG.split("\n").filter((l) => !have.has(l.split("=")[0].trim()));
+    $("slang").value = (cur ? cur + "\n" : "") + add.join("\n");
+  });
   $("close-settings").addEventListener("click", closeSettings);
   sheet.addEventListener("click", (e) => { if (e.target === sheet) closeSettings(); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !sheet.hidden) closeSettings(); });
