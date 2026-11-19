@@ -14,8 +14,11 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="preconnect" href="https://translate.googleapis.com">
+<link rel="preconnect" href="https://api.anthropic.com">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&display=swap">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&display=swap" media="print" onload="this.media='all'">
 <style>
 /* Layout: one phone on the table. Top half faces the English speaker (rotated), bottom half faces the Korean speaker. */
 :root {
@@ -407,8 +410,8 @@ button { -webkit-tap-highlight-color: transparent; }
   const SDK_URL = "https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@1.3.0/+esm";
   const MIC_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
   const STOP_SVG = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2"/></svg>';
-  const SILENCE_MS = 1200;   // a pause this long ends a sentence
-  const LIVE_DEBOUNCE_MS = 250;
+  const SILENCE_MS = 800;        // a pause this long ends a sentence
+  const LIVE_INTERVAL_MS = 300;  // while someone talks, refresh the live translation this often
   const LANG = {
     ko: { name: "Korean", code: "ko", tts: "ko-KR", rec: "ko-KR", other: "en", me: "나",
           wait: "번역 중…", fail: "번역하지 못했어요. 인터넷 연결을 확인해 주세요.", listening: "듣고 있어요…",
@@ -508,7 +511,18 @@ button { -webkit-tap-highlight-color: transparent; }
   }
 
   // ---------------- free translation (fast, used while speaking) ----------------
-  async function freeTranslate(text, from, to, signal) {
+  // The live preview usually already translated the exact sentence that gets committed; reuse it.
+  const freeCache = new Map();
+  function freeTranslate(text, from, to, signal) {
+    const key = from + "|" + to + "|" + text;
+    if (freeCache.has(key)) return freeCache.get(key);
+    const p = freeTranslateUncached(text, from, to, signal);
+    freeCache.set(key, p);
+    p.catch(() => freeCache.delete(key));
+    if (freeCache.size > 300) freeCache.delete(freeCache.keys().next().value);
+    return p;
+  }
+  async function freeTranslateUncached(text, from, to, signal) {
     text = plainify(text, from);
     try {
       const url = "https://translate.googleapis.com/translate_a/single?client=gtx&dt=t&sl=" + from + "&tl=" + to + "&q=" + encodeURIComponent(text);
@@ -796,15 +810,16 @@ button { -webkit-tap-highlight-color: transparent; }
     }
   }
 
-  async function addMessage(side, text) {
+  async function addMessage(side, text, provisional) {
     text = (text || "").trim();
     if (!text) return;
-    const m = { id: nextId++, side, text, tr: "", pending: true };
+    // Show the live preview right away; the final translation replaces it when it arrives.
+    const m = { id: nextId++, side, text, tr: provisional || "", pending: true };
     if (mode === "solo") soloMsgs.push(m);
     else { msgs = msgs.filter((x) => !x.example); msgs.push(m); }
     render();
     try {
-      m.tr = await translateFinal(text, side, (snap) => { m.tr = snap; render(); });
+      m.tr = await translateFinal(text, side, (snap) => { if (!provisional) { m.tr = snap; render(); } });
       m.pending = false;
       render();
       queueSpeech(m.tr, LANG[side].other);
@@ -858,8 +873,9 @@ button { -webkit-tap-highlight-color: transparent; }
   let transcript = "";
   let silenceTimer = 0;
   let liveTimer = 0;
-  let liveAbort = null;
   let liveSeq = 0;
+  let shownSeq = 0;
+  let lastLiveStart = 0;
   let restarts = 0;
   let pendingFinals = 0;  // sentences still being translated after the mic stops
 
@@ -880,33 +896,36 @@ button { -webkit-tap-highlight-color: transparent; }
     return transcript.slice(committedLen).trim();
   }
 
+  // Throttle, not debounce: while the speaker keeps talking, a fresh translation still goes out every LIVE_INTERVAL_MS.
   function scheduleLiveTranslate(side) {
     clearTimeout(liveTimer);
-    liveTimer = setTimeout(async () => {
-      const text = currentUtterance();
-      if (!text || activeSide !== side) return;
-      const seq = ++liveSeq;
-      if (liveAbort) liveAbort.abort();
-      liveAbort = new AbortController();
-      try {
-        const tr = await freeTranslate(text, LANG[side].code, LANG[LANG[side].other].code, liveAbort.signal);
-        if (seq === liveSeq && live && live.side === side) { live.tr = tr; render(); }
-      } catch (e) { /* the final translation will fill it in */ }
-    }, LIVE_DEBOUNCE_MS);
+    const wait = Math.max(0, LIVE_INTERVAL_MS - (Date.now() - lastLiveStart));
+    liveTimer = setTimeout(() => runLiveTranslate(side), wait);
+  }
+  async function runLiveTranslate(side) {
+    const text = currentUtterance();
+    if (!text || activeSide !== side) return;
+    lastLiveStart = Date.now();
+    const seq = ++liveSeq;
+    try {
+      const tr = await freeTranslate(text, LANG[side].code, LANG[LANG[side].other].code);
+      // Requests can come back out of order; only ever show a newer one.
+      if (seq > shownSeq && live && live.side === side) { shownSeq = seq; live.tr = tr; render(); }
+    } catch (e) { /* the final translation will fill it in */ }
   }
 
   function commitSentence(side) {
     clearTimeout(silenceTimer);
     clearTimeout(liveTimer);
-    if (liveAbort) { liveAbort.abort(); liveAbort = null; }
-    liveSeq++;
+    shownSeq = ++liveSeq;
     const text = currentUtterance();
+    const provisional = live && live.side === side ? live.tr : "";
     committedLen = transcript.length;
     live = null;
     render();
     if (text) {
       pendingFinals++;
-      addMessage(side, text).finally(() => { pendingFinals--; if (!activeSide) flushSpeech(); });
+      addMessage(side, text, provisional).finally(() => { pendingFinals--; if (!activeSide) flushSpeech(); });
     }
   }
 
