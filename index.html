@@ -275,6 +275,7 @@ button { -webkit-tap-highlight-color: transparent; }
     <span class="brand"><em>마주</em><i>Talk</i></span>
     <button class="tog" id="tog-flip" type="button" aria-pressed="true">마주보기</button>
     <button class="tog" id="tog-voice" type="button" aria-pressed="true">읽어주기</button>
+    <button class="tog" id="tog-live" type="button" aria-pressed="false">이어폰 실시간</button>
     <button class="tog" id="tog-copy" type="button">복사</button>
     <button class="tog" id="tog-clear" type="button">지우기</button>
     <button class="tog" id="tog-settings" type="button">설정</button>
@@ -304,6 +305,7 @@ button { -webkit-tap-highlight-color: transparent; }
     <span class="brand"><em>마주</em><i>Talk</i></span>
     <button class="tog" id="solo-pair" type="button">Face-to-face · 마주보기</button>
     <button class="tog" id="solo-voice" type="button" aria-pressed="true">Read aloud</button>
+    <button class="tog" id="solo-live" type="button" aria-pressed="false">Earphones: live</button>
     <button class="tog" id="solo-polite" type="button" aria-pressed="true">Polite Korean</button>
     <button class="tog" id="solo-copy" type="button">Copy</button>
     <button class="tog" id="solo-clear" type="button">Clear</button>
@@ -449,6 +451,7 @@ button { -webkit-tap-highlight-color: transparent; }
   let mode = store.get("mt-mode") === "solo" ? "solo" : "pair";
   let soloPolite = store.get("mt-polite") !== "0";
   let soloMsgs = [];
+  let liveVoice = store.get("mt-livevoice") === "1";
 
   // My own words: [{term, meaning}] in localStorage. Older versions kept "단어 = 뜻" lines in "mt-slang".
   function loadMyWords() {
@@ -844,20 +847,31 @@ button { -webkit-tap-highlight-color: transparent; }
       return vs.find((v) => v.localService && /premium|enhanced|향상/i.test(v.name)) || vs.find((v) => v.localService) || vs[0] || null;
     } catch (e) { return null; }
   }
-  function say(text, lang) {
+  let speaking = 0;   // utterances queued or playing
+  function say(text, lang, rate) {
     if (!text || !("speechSynthesis" in window)) return;
     try {
       const u = new SpeechSynthesisUtterance(text);
       u.lang = LANG[lang].tts;
+      if (rate) u.rate = rate;
       const v = pickVoice(lang);
       if (v) u.voice = v;
+      speaking++;
+      u.onend = u.onerror = () => { speaking = Math.max(0, speaking - 1); };
       speechSynthesis.speak(u);
     } catch (e) {}
   }
-  // While someone is talking the mic is open, so read translations aloud once they stop.
+  // Earphone mode: read each sentence as soon as it is translated, while the mic stays on.
+  // If the speaker talks faster than the voice can keep up, drop the backlog and jump to the newest sentence.
+  function sayLive(text, lang) {
+    if (speaking >= 2 && "speechSynthesis" in window) { try { speechSynthesis.cancel(); } catch (e) {} speaking = 0; }
+    say(text, lang, 1.1);
+  }
+  // Without earphones the mic would hear the phone's own voice, so translations wait until the speaker stops.
   function queueSpeech(text, lang) {
     if (!speakAloud) return;
-    if (activeSide) speechQueue.push([text, lang]);
+    if (activeSide && liveVoice) sayLive(text, lang);
+    else if (activeSide) speechQueue.push([text, lang]);
     else say(text, lang);
   }
   function flushSpeech() {
@@ -1055,6 +1069,21 @@ button { -webkit-tap-highlight-color: transparent; }
     if (!on && "speechSynthesis" in window) { try { speechSynthesis.cancel(); } catch (e) {} }
   }
   voiceBtn.addEventListener("click", () => { unlockVoice(); setVoice(!speakAloud); });
+
+  function setLiveVoice(on, announce) {
+    liveVoice = on;
+    store.set("mt-livevoice", on ? "1" : "0");
+    for (const id of ["tog-live", "solo-live"]) $(id).setAttribute("aria-pressed", String(on));
+    if (on && !speakAloud) setVoice(true);
+    if (announce) {
+      const msg = mode === "solo"
+        ? (on ? "Earphones on: each sentence is read aloud as soon as it's translated. Use earphones so the mic doesn't hear the voice." : "Earphones off: translations are read after you stop the mic.")
+        : (on ? "이어폰 실시간 켜짐: 문장이 번역되는 대로 바로 읽어 줘요. 마이크가 그 소리를 듣지 않게 꼭 이어폰을 끼세요." : "이어폰 실시간 꺼짐: 마이크를 끈 뒤에 읽어 줘요.");
+      setNote(mode === "solo" ? "en" : "ko", msg);
+    }
+  }
+  $("tog-live").addEventListener("click", () => { unlockVoice(); setLiveVoice(!liveVoice, true); });
+  $("solo-live").addEventListener("click", () => { unlockVoice(); setLiveVoice(!liveVoice, true); });
 
   $("tog-clear").addEventListener("click", () => { msgs = []; live = null; render(); });
 
@@ -1264,6 +1293,7 @@ button { -webkit-tap-highlight-color: transparent; }
   setFlip(flipPref ? flipPref === "1" : true);
   setVoice(speakAloud);
   setPolite(soloPolite);
+  setLiveVoice(liveVoice, false);
   setMode(mode);
   if ("speechSynthesis" in window) {
     try { speechSynthesis.getVoices(); speechSynthesis.addEventListener && speechSynthesis.addEventListener("voiceschanged", () => {}); } catch (e) {}
