@@ -4,7 +4,7 @@
  "cash": 46964.67476379442,
  "qty": 0.0,
  "created": "2026-11-12",
- "last_decision_date": "2026-11-19",
+ "last_decision_date": "2026-11-20",
  "halted": false,
  "trades": [
   {
@@ -60,10 +60,14 @@
   {
    "date": "2026-11-19",
    "value": 46964.67
+  },
+  {
+   "date": "2026-11-20",
+   "value": 46964.67
   }
  ],
  "last_signal": 0,
  "last_action": "stay-cash",
- "last_price": 85340000.0,
+ "last_price": 84363000.0,
  "last_note": ""
 }
