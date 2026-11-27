@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-26T09:08+09:00",
+ "updated": "2026-11-27T09:07+09:00",
  "stop": false,
  "accounts": [
   {
@@ -14,7 +14,7 @@
    "returnPct": -6.07,
    "position": "현금",
    "lastAction": "stay-cash",
-   "lastDate": "2026-11-26",
+   "lastDate": "2026-11-27",
    "lastNote": "",
    "trades": 2,
    "since": "2026-11-12",
@@ -79,6 +79,10 @@
     {
      "date": "2026-11-26",
      "value": 46964.67
+    },
+    {
+     "date": "2026-11-27",
+     "value": 46964.67
     }
    ]
   },
@@ -94,7 +98,7 @@
    "returnPct": 0.0,
    "position": "현금",
    "lastAction": "stay-cash",
-   "lastDate": "2026-11-26",
+   "lastDate": "2026-11-27",
    "lastNote": "",
    "trades": 0,
    "since": "2026-11-12",
@@ -158,6 +162,10 @@
     },
     {
      "date": "2026-11-26",
+     "value": 50000.0
+    },
+    {
+     "date": "2026-11-27",
      "value": 50000.0
     }
    ]
@@ -174,7 +182,7 @@
    "returnPct": 0.0,
    "position": "현금",
    "lastAction": "stay-cash",
-   "lastDate": "2026-11-26",
+   "lastDate": "2026-11-27",
    "lastNote": "",
    "trades": 0,
    "since": "2026-11-12",
@@ -239,6 +247,10 @@
     {
      "date": "2026-11-26",
      "value": 50000.0
+    },
+    {
+     "date": "2026-11-27",
+     "value": 50000.0
     }
    ]
   },
@@ -254,7 +266,7 @@
    "returnPct": -1.74,
    "position": "현금",
    "lastAction": "stay-cash",
-   "lastDate": "2026-11-26",
+   "lastDate": "2026-11-27",
    "lastNote": "",
    "trades": 2,
    "since": "2026-11-12",
@@ -319,6 +331,10 @@
     {
      "date": "2026-11-26",
      "value": 49128.8
+    },
+    {
+     "date": "2026-11-27",
+     "value": 49128.8
     }
    ]
   },
@@ -330,11 +346,11 @@
    "strategy": "매수 후 보유",
    "enabled": true,
    "initial": 50000,
-   "equity": 41257.0,
-   "returnPct": -17.49,
+   "equity": 41372.0,
+   "returnPct": -17.26,
    "position": "보유",
    "lastAction": "hold-position",
-   "lastDate": "2026-11-26",
+   "lastDate": "2026-11-27",
    "lastNote": "",
    "trades": 1,
    "since": "2026-11-12",
@@ -399,6 +415,10 @@
     {
      "date": "2026-11-26",
      "value": 41257.45
+    },
+    {
+     "date": "2026-11-27",
+     "value": 41371.68
     }
    ]
   },
@@ -410,11 +430,11 @@
    "strategy": "매수 후 보유",
    "enabled": true,
    "initial": 50000,
-   "equity": 41526.0,
-   "returnPct": -16.95,
+   "equity": 41454.0,
+   "returnPct": -17.09,
    "position": "보유",
    "lastAction": "hold-position",
-   "lastDate": "2026-11-26",
+   "lastDate": "2026-11-27",
    "lastNote": "",
    "trades": 1,
    "since": "2026-11-12",
@@ -479,6 +499,10 @@
     {
      "date": "2026-11-26",
      "value": 41525.97
+    },
+    {
+     "date": "2026-11-27",
+     "value": 41453.72
     }
    ]
   }

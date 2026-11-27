@@ -88,3 +88,9 @@
 {"at": "2026-11-26T09:08:25+09:00", "stop_file": false, "account": "eth-momentum", "date": "2026-11-26", "signal": 0, "action": "stay-cash", "price": 2299000.0, "equity": 49128.803250982404, "note": ""}
 {"at": "2026-11-26T09:08:25+09:00", "stop_file": false, "account": "btc-hold", "date": "2026-11-26", "signal": 1, "action": "hold-position", "price": 81990000.0, "equity": 41257.450148126525, "note": ""}
 {"at": "2026-11-26T09:08:25+09:00", "stop_file": false, "account": "eth-hold", "date": "2026-11-26", "signal": 1, "action": "hold-position", "price": 2299000.0, "equity": 41525.96814297803, "note": ""}
+{"at": "2026-11-27T09:07:51+09:00", "stop_file": false, "account": "btc-momentum", "date": "2026-11-27", "signal": 0, "action": "stay-cash", "price": 82217000.0, "equity": 46964.67476379442, "note": ""}
+{"at": "2026-11-27T09:07:51+09:00", "stop_file": false, "account": "eth-ma", "date": "2026-11-27", "signal": 0, "action": "stay-cash", "price": 2295000.0, "equity": 50000.0, "note": ""}
+{"at": "2026-11-27T09:07:51+09:00", "stop_file": false, "account": "btc-ma", "date": "2026-11-27", "signal": 0, "action": "stay-cash", "price": 82217000.0, "equity": 50000.0, "note": ""}
+{"at": "2026-11-27T09:07:51+09:00", "stop_file": false, "account": "eth-momentum", "date": "2026-11-27", "signal": 0, "action": "stay-cash", "price": 2295000.0, "equity": 49128.803250982404, "note": ""}
+{"at": "2026-11-27T09:07:51+09:00", "stop_file": false, "account": "btc-hold", "date": "2026-11-27", "signal": 1, "action": "hold-position", "price": 82217000.0, "equity": 41371.676775564316, "note": ""}
+{"at": "2026-11-27T09:07:51+09:00", "stop_file": false, "account": "eth-hold", "date": "2026-11-27", "signal": 1, "action": "hold-position", "price": 2295000.0, "equity": 41453.71765469098, "note": ""}
