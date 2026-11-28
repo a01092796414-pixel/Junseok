@@ -1,0 +1,11 @@
+{
+  "note": "모의매매 계좌 (가짜 돈). 리스크 매니저 2026-11-12 조건부 승인: 후보 C + 대조군. 3개월 동안 전략·파라미터를 바꾸지 않는다. control=true는 선택 편향 점검용 장부 계좌.",
+  "accounts": [
+    {"id": "btc-momentum", "name": "비트코인 모멘텀", "market": "KRW-BTC", "cash": 50000, "strategy": {"type": "momentum", "lookback": 120}},
+    {"id": "eth-ma", "name": "이더리움 이동평균", "market": "KRW-ETH", "cash": 50000, "strategy": {"type": "ma", "short": 20, "long": 60}},
+    {"id": "btc-ma", "name": "비트코인 이동평균", "market": "KRW-BTC", "cash": 50000, "strategy": {"type": "ma", "short": 20, "long": 60}, "control": true},
+    {"id": "eth-momentum", "name": "이더리움 모멘텀", "market": "KRW-ETH", "cash": 50000, "strategy": {"type": "momentum", "lookback": 120}, "control": true},
+    {"id": "btc-hold", "name": "비트코인 보유", "market": "KRW-BTC", "cash": 50000, "strategy": {"type": "hold"}, "control": true},
+    {"id": "eth-hold", "name": "이더리움 보유", "market": "KRW-ETH", "cash": 50000, "strategy": {"type": "hold"}, "control": true}
+  ]
+}
